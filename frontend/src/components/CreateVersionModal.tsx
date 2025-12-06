@@ -1,9 +1,10 @@
 /**
  * Modal Component for Creating a New Piece Version
  */
-import { useState, FormEvent, ChangeEvent } from 'react';
-import { X, Upload } from 'lucide-react';
+import { useState, FormEvent, ChangeEvent, useRef, useEffect } from 'react';
+import { X, Upload, RefreshCw } from 'lucide-react';
 import type { CreateVersionRequest } from '../types';
+import AIImageEditor from './AIImageEditor';
 
 interface CreateVersionModalProps {
   isOpen: boolean;
@@ -25,6 +26,62 @@ export default function CreateVersionModal({
   const [imgSideL, setImgSideL] = useState<File | undefined>();
   const [modelGlb, setModelGlb] = useState<File | undefined>();
   const [modelStl, setModelStl] = useState<File | undefined>();
+  const imgFrontInputRef = useRef<HTMLInputElement | null>(null);
+  const imgBackInputRef = useRef<HTMLInputElement | null>(null);
+  const imgSideRInputRef = useRef<HTMLInputElement | null>(null);
+  const imgSideLInputRef = useRef<HTMLInputElement | null>(null);
+  const [imgFrontPreview, setImgFrontPreview] = useState<string | null>(null);
+  const [imgBackPreview, setImgBackPreview] = useState<string | null>(null);
+  const [imgSideRPreview, setImgSideRPreview] = useState<string | null>(null);
+  const [imgSideLPreview, setImgSideLPreview] = useState<string | null>(null);
+  
+  // AI Editor state
+  const [aiEditorOpen, setAiEditorOpen] = useState(false);
+  const [currentEditingField, setCurrentEditingField] = useState<'front' | 'back' | 'sideR' | 'sideL' | null>(null);
+
+  useEffect(() => {
+    let url: string | undefined;
+    if (imgFront) {
+      url = URL.createObjectURL(imgFront);
+      setImgFrontPreview(url);
+    } else {
+      setImgFrontPreview(null);
+    }
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [imgFront]);
+
+  useEffect(() => {
+    let url: string | undefined;
+    if (imgBack) {
+      url = URL.createObjectURL(imgBack);
+      setImgBackPreview(url);
+    } else {
+      setImgBackPreview(null);
+    }
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [imgBack]);
+
+  useEffect(() => {
+    let url: string | undefined;
+    if (imgSideR) {
+      url = URL.createObjectURL(imgSideR);
+      setImgSideRPreview(url);
+    } else {
+      setImgSideRPreview(null);
+    }
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [imgSideR]);
+
+  useEffect(() => {
+    let url: string | undefined;
+    if (imgSideL) {
+      url = URL.createObjectURL(imgSideL);
+      setImgSideLPreview(url);
+    } else {
+      setImgSideLPreview(null);
+    }
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [imgSideL]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -53,6 +110,18 @@ export default function CreateVersionModal({
   ) => {
     const file = e.target.files?.[0];
     setter(file);
+  };
+
+  const openAIEditor = (field: 'front' | 'back' | 'sideR' | 'sideL') => {
+    setCurrentEditingField(field);
+    setAiEditorOpen(true);
+  };
+
+  const handleAIGenerate = (prompt: string, selectedImages: File[]) => {
+    // Backend integration will come later
+    console.log('AI Generate:', { field: currentEditingField, prompt, images: selectedImages });
+    // For now, just close the editor
+    // Later: handle generated image and set it to the appropriate field
   };
 
   if (!isOpen) return null;
@@ -95,9 +164,7 @@ export default function CreateVersionModal({
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label htmlFor="imgFront" className="block text-sm text-gray-700 mb-1">
-                  Fronte
-                </label>
+                <label className="block text-sm text-gray-700 mb-1">Fronte</label>
                 <div className="relative">
                   <input
                     type="file"
@@ -106,26 +173,56 @@ export default function CreateVersionModal({
                     onChange={(e) => handleFileChange(e, setImgFront)}
                     className="hidden"
                     disabled={isLoading}
+                    ref={imgFrontInputRef}
                   />
-                  <label
-                    htmlFor="imgFront"
-                    className="flex items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors"
-                  >
-                    {imgFront ? (
-                      <span className="text-sm text-gray-600 truncate px-2">
-                        {imgFront.name}
-                      </span>
-                    ) : (
-                      <Upload className="w-6 h-6 text-gray-400" />
-                    )}
-                  </label>
+
+                  {/* Card with big "Genera" action and small upload + rigenera buttons in corner; show preview if available */}
+                  <div className="w-full h-24 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 relative overflow-visible">
+                    {imgFrontPreview ? (
+                      <img src={imgFrontPreview} alt="Anteprima fronte" className="absolute inset-0 w-full h-full object-contain p-2" />
+                    ) : null}
+
+                    {/* Generate button occupying whole card; semi-transparent when preview shown */}
+                    <button
+                      type="button"
+                      onClick={() => openAIEditor('front')}
+                      aria-label="Genera immagine fronte"
+                      className={`absolute inset-0 z-10 flex items-center justify-center text-sm font-medium shadow ${imgFrontPreview ? 'bg-indigo-600/25 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'} rounded-lg`}
+                    >
+                      {imgFrontPreview ? <span className="sr-only">Genera con AI</span> : <>Genera con AI 🤖</>}
+                    </button>
+
+                    {/* Small upload & rigenerate buttons in top-right corner */}
+                    <div className="absolute top-2 right-2 flex flex-col items-center gap-2 z-40">
+                      {imgFront && (
+                        <button
+                          type="button"
+                          onClick={() => openAIEditor('front')}
+                          title="Rigenera immagine"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => imgFrontInputRef.current?.click()}
+                        title="Carica immagine"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-blue-600 hover:text-white transition-colors"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* filename shown bottom-left if present (contrast with preview) */}
+                    {/* filename hidden as requested */}
+                  </div>
                 </div>
               </div>
 
               <div>
-                <label htmlFor="imgBack" className="block text-sm text-gray-700 mb-1">
-                  Retro
-                </label>
+                <label className="block text-sm text-gray-700 mb-1">Retro</label>
                 <div className="relative">
                   <input
                     type="file"
@@ -134,26 +231,50 @@ export default function CreateVersionModal({
                     onChange={(e) => handleFileChange(e, setImgBack)}
                     className="hidden"
                     disabled={isLoading}
+                    ref={imgBackInputRef}
                   />
-                  <label
-                    htmlFor="imgBack"
-                    className="flex items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors"
-                  >
-                    {imgBack ? (
-                      <span className="text-sm text-gray-600 truncate px-2">
-                        {imgBack.name}
-                      </span>
-                    ) : (
-                      <Upload className="w-6 h-6 text-gray-400" />
-                    )}
-                  </label>
+
+                  <div className="w-full h-24 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 relative overflow-visible">
+                    {imgBackPreview ? (
+                      <img src={imgBackPreview} alt="Anteprima retro" className="absolute inset-0 w-full h-full object-contain p-2" />
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => openAIEditor('back')}
+                      aria-label="Genera immagine retro"
+                      className={`absolute inset-0 z-10 flex items-center justify-center text-sm font-medium shadow ${imgBackPreview ? 'bg-indigo-600/25 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'} rounded-lg`}
+                    >
+                      {imgBackPreview ? <span className="sr-only">Genera con AI</span> : <>Genera con AI 🤖</>}
+                    </button>
+
+                    <div className="absolute top-2 right-2 flex flex-col items-center gap-2 z-40">
+                      {imgBack && (
+                        <button
+                          type="button"
+                          onClick={() => openAIEditor('back')}
+                          title="Rigenera immagine"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => imgBackInputRef.current?.click()}
+                        title="Carica immagine"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-blue-600 hover:text-white transition-colors"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div>
-                <label htmlFor="imgSideR" className="block text-sm text-gray-700 mb-1">
-                  Destra
-                </label>
+                <label className="block text-sm text-gray-700 mb-1">Destra</label>
                 <div className="relative">
                   <input
                     type="file"
@@ -162,26 +283,50 @@ export default function CreateVersionModal({
                     onChange={(e) => handleFileChange(e, setImgSideR)}
                     className="hidden"
                     disabled={isLoading}
+                    ref={imgSideRInputRef}
                   />
-                  <label
-                    htmlFor="imgSideR"
-                    className="flex items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors"
-                  >
-                    {imgSideR ? (
-                      <span className="text-sm text-gray-600 truncate px-2">
-                        {imgSideR.name}
-                      </span>
-                    ) : (
-                      <Upload className="w-6 h-6 text-gray-400" />
-                    )}
-                  </label>
+
+                  <div className="w-full h-24 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 relative overflow-visible">
+                    {imgSideRPreview ? (
+                      <img src={imgSideRPreview} alt="Anteprima destra" className="absolute inset-0 w-full h-full object-contain p-2" />
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => openAIEditor('sideR')}
+                      aria-label="Genera immagine destra"
+                      className={`absolute inset-0 z-10 flex items-center justify-center text-sm font-medium shadow ${imgSideRPreview ? 'bg-indigo-600/25 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'} rounded-lg`}
+                    >
+                      {imgSideRPreview ? <span className="sr-only">Genera con AI</span> : <>Genera con AI 🤖</>}
+                    </button>
+
+                    <div className="absolute top-2 right-2 flex flex-col items-center gap-2 z-40">
+                      {imgSideR && (
+                        <button
+                          type="button"
+                          onClick={() => openAIEditor('sideR')}
+                          title="Rigenera immagine"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => imgSideRInputRef.current?.click()}
+                        title="Carica immagine"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-blue-600 hover:text-white transition-colors"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div>
-                <label htmlFor="imgSideL" className="block text-sm text-gray-700 mb-1">
-                  Sinistra
-                </label>
+                <label className="block text-sm text-gray-700 mb-1">Sinistra</label>
                 <div className="relative">
                   <input
                     type="file"
@@ -190,19 +335,45 @@ export default function CreateVersionModal({
                     onChange={(e) => handleFileChange(e, setImgSideL)}
                     className="hidden"
                     disabled={isLoading}
+                    ref={imgSideLInputRef}
                   />
-                  <label
-                    htmlFor="imgSideL"
-                    className="flex items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors"
-                  >
-                    {imgSideL ? (
-                      <span className="text-sm text-gray-600 truncate px-2">
-                        {imgSideL.name}
-                      </span>
-                    ) : (
-                      <Upload className="w-6 h-6 text-gray-400" />
-                    )}
-                  </label>
+
+                  <div className="w-full h-24 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 relative overflow-visible">
+                    {imgSideLPreview ? (
+                      <img src={imgSideLPreview} alt="Anteprima sinistra" className="absolute inset-0 w-full h-full object-contain p-2" />
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => openAIEditor('sideL')}
+                      aria-label="Genera immagine sinistra"
+                      className={`absolute inset-0 z-10 flex items-center justify-center text-sm font-medium shadow ${imgSideLPreview ? 'bg-indigo-600/25 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'} rounded-lg`}
+                    >
+                      {imgSideLPreview ? <span className="sr-only">Genera con AI</span> : <>Genera con AI 🤖</>}
+                    </button>
+
+                    <div className="absolute top-2 right-2 flex flex-col items-center gap-2 z-40">
+                      {imgSideL && (
+                        <button
+                          type="button"
+                          onClick={() => openAIEditor('sideL')}
+                          title="Rigenera immagine"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => imgSideLInputRef.current?.click()}
+                        title="Carica immagine"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-blue-600 hover:text-white transition-colors"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -289,6 +460,14 @@ export default function CreateVersionModal({
           </div>
         </form>
       </div>
+
+      {/* AI Image Editor */}
+      <AIImageEditor
+        isOpen={aiEditorOpen}
+        onClose={() => setAiEditorOpen(false)}
+        onGenerate={handleAIGenerate}
+        initialImage={currentEditingField === 'front' ? imgFront : currentEditingField === 'back' ? imgBack : currentEditingField === 'sideR' ? imgSideR : currentEditingField === 'sideL' ? imgSideL : undefined}
+      />
     </div>
   );
 }
