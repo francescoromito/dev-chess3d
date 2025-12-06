@@ -8,10 +8,11 @@ from fastapi import (
 from sqlmodel import Session
 from app.database import get_session
 from app.models import (
-    ChessPieceReadWithVersions, PieceVersionCreate, PieceVersionRead, PieceVersion
+    ChessPieceReadWithVersions, PieceVersionCreate, PieceVersionRead, PieceVersion, ChessPiece, ChessSet, User
 )
 from app.services.piece_version_service import PieceVersionService
 from app.services.chess_set_service import ChessSetService
+from app.api.auth import get_current_user
 import io
 import zipfile
 import json
@@ -20,6 +21,48 @@ import re
 
 
 router = APIRouter(prefix="/pieces", tags=["Pieces & Versions"])
+
+
+def _check_piece_ownership(session: Session, piece_id: int, current_user: User) -> ChessPiece:
+    """Check if the piece belongs to a set owned by the current user and not public.
+    Returns the piece if valid, raises HTTPException otherwise."""
+    piece = session.get(ChessPiece, piece_id)
+    if not piece:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Piece with id {piece_id} not found")
+    
+    chess_set = session.get(ChessSet, piece.set_id)
+    if not chess_set:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chess set not found")
+    
+    if chess_set.is_public or chess_set.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot modify pieces from a public or seeded chess set"
+        )
+    return piece
+
+
+def _check_version_ownership(session: Session, version_id: int, current_user: User) -> PieceVersion:
+    """Check if the version belongs to a set owned by the current user and not public.
+    Returns the version if valid, raises HTTPException otherwise."""
+    version = session.get(PieceVersion, version_id)
+    if not version:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Version with id {version_id} not found")
+    
+    piece = session.get(ChessPiece, version.piece_id)
+    if not piece:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Piece not found")
+    
+    chess_set = session.get(ChessSet, piece.set_id)
+    if not chess_set:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chess set not found")
+    
+    if chess_set.is_public or chess_set.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot modify versions from a public or seeded chess set"
+        )
+    return version
 
 
 @router.get("/{piece_id}", response_model=ChessPieceReadWithVersions)
@@ -334,16 +377,27 @@ def download_version_zip(version_id: int, session: Session = Depends(get_session
     return StreamingResponse(buf, media_type='application/zip', headers=headers)
 
 @router.delete("/versions/{version_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_piece_version(version_id: int, session: Session = Depends(get_session)):
-    """Delete a piece version and its files"""
+def delete_piece_version(
+    version_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a piece version and its files (only if owned by current user)"""
+    _check_version_ownership(session, version_id, current_user)
     success = PieceVersionService.delete_version(session, version_id)
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Version with id {version_id} not found")
     return None
 
 @router.delete("/versions/{version_id}/file")
-def delete_version_file(version_id: int, field: str, session: Session = Depends(get_session)) -> PieceVersionRead:
-    """Remove a single file from a version (query param 'field' required)"""
+def delete_version_file(
+    version_id: int,
+    field: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+) -> PieceVersionRead:
+    """Remove a single file from a version (only if owned by current user)"""
+    _check_version_ownership(session, version_id, current_user)
     try:
         db_version = PieceVersionService.remove_file(session, version_id, field)
         if not db_version:
@@ -357,15 +411,11 @@ def update_piece(
     piece_id: int,
     name: Optional[str] = None,
     description: Optional[str] = None,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ) -> ChessPieceReadWithVersions:
-    """Update a chess piece's name/description"""
-    piece = session.get(ChessPieceReadWithVersions.__args__[0].__mro__[1], piece_id) if False else None
-    # simpler: load model directly
-    from app.models import ChessPiece
-    db_piece = session.get(ChessPiece, piece_id)
-    if not db_piece:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Piece with id {piece_id} not found")
+    """Update a chess piece's name/description (only if owned by current user)"""
+    db_piece = _check_piece_ownership(session, piece_id, current_user)
     if name is not None:
         db_piece.name = name
     if description is not None:
@@ -393,11 +443,13 @@ async def patch_piece_version(
     version_id: int,
     version_name: Optional[str] = Form(None),
     version_description: Optional[str] = Form(None),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ) -> PieceVersionRead:
     """
-    Update version name and/or description
+    Update version name and/or description (only if owned by current user)
     """
+    _check_version_ownership(session, version_id, current_user)
     try:
         db_version = session.get(PieceVersion, version_id)
         if not db_version:
@@ -427,10 +479,11 @@ async def update_piece_version(
     img_side_l: Optional[UploadFile] = File(None),
     model_glb: Optional[UploadFile] = File(None),
     model_stl: Optional[UploadFile] = File(None),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ) -> PieceVersionRead:
     """
-    Update an existing piece version with new files or name
+    Update an existing piece version with new files or name (only if owned by current user)
     
     Accepts multipart form data with:
     - version_name: New name for the version (optional)
@@ -441,6 +494,7 @@ async def update_piece_version(
     - model_glb: New 3D model in GLB format (optional)
     - model_stl: New 3D model in STL format (optional)
     """
+    _check_version_ownership(session, version_id, current_user)
     try:
         db_version = await PieceVersionService.update_version(
             session=session,

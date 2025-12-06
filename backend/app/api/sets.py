@@ -101,23 +101,48 @@ def duplicate_chess_set(
 def update_set(
     set_id: int,
     set_data: ChessSetCreate,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ) -> ChessSetReadWithPieces:
-    """Update name/description of a chess set"""
-    db_set = ChessSetService.update_set(session, set_id, name=set_data.name, description=set_data.description)
+    """Update name/description of a chess set (only if owned by current user)"""
+    db_set = ChessSetService.get_set_by_id(session, set_id)
     if not db_set:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Chess set with id {set_id} not found")
+    
+    # Protect public/seeded sets from modification
+    if db_set.is_public or db_set.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot modify a public or seeded chess set"
+        )
+    
+    db_set = ChessSetService.update_set(session, set_id, name=set_data.name, description=set_data.description)
     return ChessSetReadWithPieces.model_validate(db_set)
 
 
 @router.delete("/{set_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_chess_set(
     set_id: int,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ) -> None:
     """
-    Delete a chess set and all its pieces
+    Delete a chess set and all its pieces (only if owned by current user)
     """
+    db_set = ChessSetService.get_set_by_id(session, set_id)
+    if not db_set:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Chess set with id {set_id} not found"
+        )
+    
+    # Protect public/seeded sets from deletion
+    if db_set.is_public or db_set.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot delete a public or seeded chess set"
+        )
+    
     success = ChessSetService.delete_set(session, set_id)
     
     if not success:
