@@ -1,0 +1,11 @@
+{
+  "piece_type": "Bishop",
+  "piece_id": 10,
+  "piece_name": null,
+  "piece_description": null,
+  "version_id": 9,
+  "version_name": "Alfiere bianco",
+  "version_created": "2025-12-05T18:10:22.417938",
+  "chess_set_name": "Bianco",
+  "chess_set_id": 2
+}

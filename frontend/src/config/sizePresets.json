@@ -1,0 +1,44 @@
+{
+  "presets": {
+    "small": {
+      "label": "Piccola",
+      "baseSizeCm": 3.5,
+      "pieceHeights": {
+        "king": 4.5,
+        "queen": 4.2,
+        "rook": 3.0,
+        "bishop": 3.5,
+        "knight": 3.6,
+        "pawn": 2.5
+      },
+      "defaultHeight": 3.5
+    },
+    "medium": {
+      "label": "Media",
+      "baseSizeCm": 6,
+      "pieceHeights": {
+        "king": 7.8,
+        "queen": 7.2,
+        "rook": 5.2,
+        "bishop": 6.0,
+        "knight": 6.2,
+        "pawn": 4.3
+      },
+      "defaultHeight": 6.0
+    },
+    "large": {
+      "label": "Grande",
+      "baseSizeCm": 10,
+      "pieceHeights": {
+        "king": 13.0,
+        "queen": 12.0,
+        "rook": 8.6,
+        "bishop": 10.0,
+        "knight": 10.3,
+        "pawn": 7.2
+      },
+      "defaultHeight": 10.0
+    }
+  },
+  "defaultPreset": "small"
+}

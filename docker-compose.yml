@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: chess_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"  # Esposto esternamente per accesso da fuori Docker
+    environment:
+      - POSTGRES_USER=chess_user
+      - POSTGRES_PASSWORD=chess_password
+      - POSTGRES_DB=chess_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chess_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chess_user -d chess_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chess_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/uploads  # Bind mount - file visibili nel progetto
+    environment:
+      - DATABASE_URL=postgresql://chess_user:chess_password@db:5432/chess_db
+      - UPLOAD_DIR=/app/uploads
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - chess_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chess_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    command: npm run dev
+    depends_on:
+      - backend
+    networks:
+      - chess_network
+
+networks:
+  chess_network:
+    driver: bridge
+
+volumes:
+  postgres_data:  # Volume per dati PostgreSQL

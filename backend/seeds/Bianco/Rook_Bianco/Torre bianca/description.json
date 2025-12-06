@@ -1,0 +1,11 @@
+{
+  "piece_type": "Rook",
+  "piece_id": 9,
+  "piece_name": null,
+  "piece_description": null,
+  "version_id": 8,
+  "version_name": "Torre bianca",
+  "version_created": "2025-12-05T18:09:40.079545",
+  "chess_set_name": "Bianco",
+  "chess_set_id": 2
+}

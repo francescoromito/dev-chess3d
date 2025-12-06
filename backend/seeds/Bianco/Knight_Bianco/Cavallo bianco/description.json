@@ -1,0 +1,11 @@
+{
+  "piece_type": "Knight",
+  "piece_id": 11,
+  "piece_name": null,
+  "piece_description": null,
+  "version_id": 10,
+  "version_name": "Cavallo bianco",
+  "version_created": "2025-12-05T18:14:01.293739",
+  "chess_set_name": "Bianco",
+  "chess_set_id": 2
+}

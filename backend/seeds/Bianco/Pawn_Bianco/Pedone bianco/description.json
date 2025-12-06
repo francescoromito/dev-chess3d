@@ -1,0 +1,11 @@
+{
+  "piece_type": "Pawn",
+  "piece_id": 12,
+  "piece_name": null,
+  "piece_description": null,
+  "version_id": 11,
+  "version_name": "Pedone bianco",
+  "version_created": "2025-12-05T18:14:27.084298",
+  "chess_set_name": "Bianco",
+  "chess_set_id": 2
+}

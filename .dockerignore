@@ -1,0 +1,10 @@
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/node_modules
+**/.git
+**/.gitignore
+**/README.md
+**/docker-compose.yml
+uploads/*
+data/*
