@@ -103,9 +103,22 @@ class ChessSetService:
         return results.all()
 
     @staticmethod
-    def get_visible_sets(session: Session, user_id: int) -> List[ChessSet]:
-        """Get chess sets visible to a user: public sets (user_id is NULL) and sets owned by the user."""
-        statement = select(ChessSet).where((ChessSet.user_id == user_id) | (ChessSet.user_id == None)).order_by(ChessSet.created_at.desc())
+    def get_visible_sets(session: Session, user_id: int, include_public: bool = True) -> List[ChessSet]:
+        """Get chess sets visible to a user: user's own sets and public sets.
+        
+        Args:
+            session: Database session
+            user_id: ID of the current user
+            include_public: If True (default), also include sets marked as is_public=True
+        """
+        if include_public:
+            statement = select(ChessSet).where(
+                (ChessSet.user_id == user_id) | (ChessSet.is_public == True)
+            ).order_by(ChessSet.created_at.desc())
+        else:
+            statement = select(ChessSet).where(
+                ChessSet.user_id == user_id
+            ).order_by(ChessSet.created_at.desc())
         results = session.exec(statement)
         return results.all()
 

@@ -23,10 +23,16 @@ def create_collection(
 
 @router.get("", response_model=List[CollectionReadWithSets])
 def get_collections(
+    include_public: bool = True,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    cols = CollectionService.get_user_collections(session, current_user.id)
+    """
+    Get all collections.
+    By default, returns the user's own collections and public collections.
+    Set include_public=false to show only user's own collections.
+    """
+    cols = CollectionService.get_user_collections(session, current_user.id, include_public)
     return [CollectionReadWithSets.model_validate(c) for c in cols]
 
 

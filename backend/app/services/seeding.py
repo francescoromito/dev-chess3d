@@ -59,7 +59,7 @@ def should_run_seeding(session: Session) -> bool:
 
 
 def get_or_create_base_collection(session: Session) -> Collection:
-    """Get or create the 'Set Base' collection."""
+    """Get or create the 'Set Base' collection (public by default)."""
     collection = session.exec(
         select(Collection).where(Collection.name == DEFAULT_COLLECTION_NAME)
     ).first()
@@ -67,7 +67,8 @@ def get_or_create_base_collection(session: Session) -> Collection:
     if not collection:
         collection = Collection(
             name=DEFAULT_COLLECTION_NAME,
-            description=DEFAULT_COLLECTION_DESCRIPTION
+            description=DEFAULT_COLLECTION_DESCRIPTION,
+            is_public=True
         )
         session.add(collection)
         session.commit()
@@ -249,10 +250,11 @@ def import_chess_set(session: Session, set_data: Dict, collection: Collection) -
         print(f"  ⏭️  Set '{set_name}' already exists, skipping...")
         return None
     
-    # Create the chess set
+    # Create the chess set (seeded sets are public by default)
     db_set = ChessSet(
         name=set_name,
-        description=set_data.get('description')
+        description=set_data.get('description'),
+        is_public=True
     )
     session.add(db_set)
     session.commit()

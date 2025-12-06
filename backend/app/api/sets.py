@@ -45,14 +45,16 @@ def create_chess_set(
 
 @router.get("", response_model=List[ChessSetReadWithPieces])
 def get_all_sets(
+    include_public: bool = True,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ) -> List[ChessSetReadWithPieces]:
     """
-    Get all chess sets with their pieces
+    Get all chess sets with their pieces.
+    By default, returns the user's own sets and public sets.
+    Set include_public=false to show only user's own sets.
     """
-    # Return sets visible to the user: public sets (no owner) and the user's own sets
-    sets = ChessSetService.get_visible_sets(session, current_user.id)
+    sets = ChessSetService.get_visible_sets(session, current_user.id, include_public)
     return [ChessSetReadWithPieces.model_validate(s) for s in sets]
 
 

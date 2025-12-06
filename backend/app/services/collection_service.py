@@ -25,12 +25,28 @@ class CollectionService:
         return session.exec(stmt).all()
 
     @staticmethod
-    def get_user_collections(session: Session, user_id: int) -> List[Collection]:
-        stmt = select(Collection).where(Collection.user_id == user_id).options(
-            selectinload(Collection.sets)
-            .selectinload(ChessSet.pieces)
-            .selectinload(ChessPiece.versions)
-        )
+    def get_user_collections(session: Session, user_id: int, include_public: bool = True) -> List[Collection]:
+        """Get collections visible to a user: user's own collections and public ones.
+        
+        Args:
+            session: Database session
+            user_id: ID of the current user
+            include_public: If True (default), also include collections marked as is_public=True
+        """
+        if include_public:
+            stmt = select(Collection).where(
+                (Collection.user_id == user_id) | (Collection.is_public == True)
+            ).options(
+                selectinload(Collection.sets)
+                .selectinload(ChessSet.pieces)
+                .selectinload(ChessPiece.versions)
+            )
+        else:
+            stmt = select(Collection).where(Collection.user_id == user_id).options(
+                selectinload(Collection.sets)
+                .selectinload(ChessSet.pieces)
+                .selectinload(ChessPiece.versions)
+            )
         return session.exec(stmt).all()
 
     @staticmethod

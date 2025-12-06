@@ -70,6 +70,7 @@ class TokenData(SQLModel):
 class CollectionBase(SQLModel):
     name: str = Field(max_length=255, index=True)
     description: Optional[str] = Field(default=None, max_length=1000)
+    is_public: bool = Field(default=False)
 
 
 class CollectionSet(SQLModel, table=True):
@@ -108,6 +109,7 @@ class CollectionReadWithSets(CollectionRead):
 class ChessSetBase(SQLModel):
     name: str = Field(max_length=255, index=True)
     description: Optional[str] = Field(default=None, max_length=1000)
+    is_public: bool = Field(default=False)
 
 
 class ChessSet(ChessSetBase, table=True):
