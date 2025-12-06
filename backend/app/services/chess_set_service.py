@@ -15,7 +15,7 @@ class ChessSetService:
     """Service layer for ChessSet operations"""
     
     @staticmethod
-    def duplicate_set(session: Session, set_id: int) -> Optional[ChessSet]:
+    def duplicate_set(session: Session, set_id: int, user_id: int) -> Optional[ChessSet]:
         """Duplicate a chess set and all its pieces/versions"""
         original_set = session.get(ChessSet, set_id)
         if not original_set:
@@ -27,6 +27,7 @@ class ChessSetService:
             description=original_set.description
         )
         new_set = ChessSet.model_validate(new_set_data)
+        new_set.user_id = user_id
         session.add(new_set)
         session.commit()
         session.refresh(new_set)
@@ -64,12 +65,13 @@ class ChessSetService:
         return new_set
 
     @staticmethod
-    def create_set(session: Session, set_data: ChessSetCreate) -> ChessSet:
+    def create_set(session: Session, set_data: ChessSetCreate, user_id: int) -> ChessSet:
         """
         Create a new chess set with all 6 piece types automatically
         """
         # Create the chess set
         db_set = ChessSet.model_validate(set_data)
+        db_set.user_id = user_id
         session.add(db_set)
         session.commit()
         session.refresh(db_set)
@@ -98,7 +100,21 @@ class ChessSetService:
         """Get all chess sets"""
         statement = select(ChessSet).order_by(ChessSet.created_at.desc())
         results = session.exec(statement)
-        return list(results.all())
+        return results.all()
+
+    @staticmethod
+    def get_visible_sets(session: Session, user_id: int) -> List[ChessSet]:
+        """Get chess sets visible to a user: public sets (user_id is NULL) and sets owned by the user."""
+        statement = select(ChessSet).where((ChessSet.user_id == user_id) | (ChessSet.user_id == None)).order_by(ChessSet.created_at.desc())
+        results = session.exec(statement)
+        return results.all()
+
+    @staticmethod
+    def get_user_sets(session: Session, user_id: int) -> List[ChessSet]:
+        """Get all chess sets for a user"""
+        statement = select(ChessSet).where(ChessSet.user_id == user_id).order_by(ChessSet.created_at.desc())
+        results = session.exec(statement)
+        return results.all()
     
     @staticmethod
     def get_set_by_id(session: Session, set_id: int) -> Optional[ChessSet]:

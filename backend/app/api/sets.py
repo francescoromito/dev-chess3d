@@ -9,10 +9,11 @@ import logging
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models import (
-    ChessSetCreate, ChessSetRead, ChessSetReadWithPieces, ChessSet, ChessPiece, PieceType, PieceVersion, PieceVersionCreate
+    ChessSetCreate, ChessSetRead, ChessSetReadWithPieces, ChessSet, ChessPiece, PieceType, PieceVersion, PieceVersionCreate, User
 )
 from app.services.chess_set_service import ChessSetService
 from app.services.piece_version_service import PieceVersionService
+from app.api.auth import get_current_user
 import io
 import zipfile
 import json
@@ -32,23 +33,26 @@ logger = logging.getLogger(__name__)
 )
 def create_chess_set(
     set_data: ChessSetCreate,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ) -> ChessSetReadWithPieces:
     """
     Create a new chess set with all 6 standard piece types
     """
-    db_set = ChessSetService.create_set(session, set_data)
+    db_set = ChessSetService.create_set(session, set_data, current_user.id)
     return ChessSetReadWithPieces.model_validate(db_set)
 
 
 @router.get("", response_model=List[ChessSetReadWithPieces])
 def get_all_sets(
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ) -> List[ChessSetReadWithPieces]:
     """
     Get all chess sets with their pieces
     """
-    sets = ChessSetService.get_all_sets(session)
+    # Return sets visible to the user: public sets (no owner) and the user's own sets
+    sets = ChessSetService.get_visible_sets(session, current_user.id)
     return [ChessSetReadWithPieces.model_validate(s) for s in sets]
 
 
@@ -74,12 +78,13 @@ def get_set_detail(
 @router.post("/{set_id}/duplicate", response_model=ChessSetReadWithPieces)
 def duplicate_chess_set(
     set_id: int,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ) -> ChessSetReadWithPieces:
     """
     Duplicate a chess set and all its pieces
     """
-    db_set = ChessSetService.duplicate_set(session, set_id)
+    db_set = ChessSetService.duplicate_set(session, set_id, current_user.id)
     
     if not db_set:
         raise HTTPException(

@@ -52,6 +52,9 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
+      # For development the app is served to your host browser; the browser must reach
+      # the backend via the host address. Keep localhost so requests go to the host port
+      # that is forwarded to the backend container (we expose 8000:8000).
       - VITE_API_URL=http://localhost:8000
     command: npm run dev
     depends_on:

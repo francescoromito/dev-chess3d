@@ -6,8 +6,9 @@ from app.models import Collection, CollectionCreate, CollectionSet, ChessSet, Ch
 
 class CollectionService:
     @staticmethod
-    def create_collection(session: Session, data: CollectionCreate) -> Collection:
-        col = Collection.from_orm(data)
+    def create_collection(session: Session, data: CollectionCreate, user_id: int) -> Collection:
+        col = Collection.model_validate(data)
+        col.user_id = user_id
         session.add(col)
         session.commit()
         session.refresh(col)
@@ -17,6 +18,15 @@ class CollectionService:
     def get_all_collections(session: Session) -> List[Collection]:
         # Eager-load associated sets and their pieces so API can return collection contents
         stmt = select(Collection).options(
+            selectinload(Collection.sets)
+            .selectinload(ChessSet.pieces)
+            .selectinload(ChessPiece.versions)
+        )
+        return session.exec(stmt).all()
+
+    @staticmethod
+    def get_user_collections(session: Session, user_id: int) -> List[Collection]:
+        stmt = select(Collection).where(Collection.user_id == user_id).options(
             selectinload(Collection.sets)
             .selectinload(ChessSet.pieces)
             .selectinload(ChessPiece.versions)

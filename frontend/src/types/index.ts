@@ -51,6 +51,23 @@ export interface PieceVersion {
   is_complete: boolean;
 }
 
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  profile_picture_url?: string | null;
+  credits: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+}
+
 export interface CreateChessSetRequest {
   name: string;
   description?: string;

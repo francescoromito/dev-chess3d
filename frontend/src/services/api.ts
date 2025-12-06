@@ -8,6 +8,8 @@ import type {
   PieceVersion,
   CreateChessSetRequest,
   CreateVersionRequest,
+  User,
+  AuthResponse,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -18,6 +20,37 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Add auth interceptor
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Auth API
+export const authApi = {
+  login: async (username: string, password: string): Promise<AuthResponse> => {
+    // OAuth2PasswordRequestForm expects application/x-www-form-urlencoded
+    const params = new URLSearchParams();
+    params.append('username', username);
+    params.append('password', password);
+    const response = await api.post<AuthResponse>('/token', params.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    return response.data;
+  },
+  register: async (data: any): Promise<User> => {
+    const response = await api.post<User>('/register', data);
+    return response.data;
+  },
+  getMe: async (): Promise<User> => {
+    const response = await api.get<User>('/users/me');
+    return response.data;
+  },
+};
 
 // Chess Sets
 export const chessSetsApi = {

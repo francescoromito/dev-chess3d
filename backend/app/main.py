@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 from app.database import create_db_and_tables, get_session
-from app.api import sets, pieces
+from app.api import sets, pieces, auth
 from app.api import collections
 from app.api.chess_engine import router as chess_router
 from app.services.seeding import seed_if_needed
@@ -65,6 +65,7 @@ app.add_middleware(
 
 
 # Include routers BEFORE mounting static files
+app.include_router(auth.router, prefix="/api")
 app.include_router(sets.router, prefix="/api")
 app.include_router(pieces.router, prefix="/api")
 app.include_router(collections.router, prefix="/api")

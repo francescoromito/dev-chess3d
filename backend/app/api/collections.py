@@ -1,24 +1,32 @@
-from typing import List
+from typing import List, Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 from app.database import get_session
-from app.models import Collection, CollectionCreate, CollectionRead, CollectionReadWithSets, ChessSet
+from app.models import Collection, CollectionCreate, CollectionRead, CollectionReadWithSets, ChessSet, User
 from app.services.collection_service import CollectionService
+from app.api.auth import get_current_user
 
 router = APIRouter(prefix="/collections", tags=["Collections"])
 
 
 @router.post("", response_model=CollectionReadWithSets, status_code=status.HTTP_201_CREATED)
-def create_collection(data: CollectionCreate, session: Session = Depends(get_session)):
-    col = CollectionService.create_collection(session, data)
+def create_collection(
+    data: CollectionCreate, 
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    col = CollectionService.create_collection(session, data, current_user.id)
     # reload with sets (empty initially)
     full = CollectionService.get_collection(session, col.id)
     return CollectionReadWithSets.model_validate(full)
 
 
 @router.get("", response_model=List[CollectionReadWithSets])
-def get_collections(session: Session = Depends(get_session)):
-    cols = CollectionService.get_all_collections(session)
+def get_collections(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    cols = CollectionService.get_user_collections(session, current_user.id)
     return [CollectionReadWithSets.model_validate(c) for c in cols]
 
 

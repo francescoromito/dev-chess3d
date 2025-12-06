@@ -20,6 +20,52 @@ class PieceType(str, Enum):
     PAWN = "Pawn"
 
 
+# --- User Model ---
+class UserBase(SQLModel):
+    email: str = Field(unique=True, index=True, max_length=255)
+    username: str = Field(unique=True, index=True, max_length=255)
+    first_name: Optional[str] = Field(default=None, max_length=100)
+    last_name: Optional[str] = Field(default=None, max_length=100)
+    profile_picture_url: Optional[str] = Field(default=None, max_length=500)
+    credits: int = Field(default=0)
+    is_active: bool = Field(default=True)
+
+
+class User(UserBase, table=True):
+    __tablename__ = "users"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    hashed_password: str = Field(max_length=255)
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
+    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
+
+    # Relationships
+    collections: List["Collection"] = Relationship(back_populates="user")
+    sets: List["ChessSet"] = Relationship(back_populates="user")
+
+
+class UserCreate(UserBase):
+    password: str
+
+
+class UserRead(UserBase):
+    id: int
+    created_at: datetime
+
+
+class UserLogin(SQLModel):
+    email: str
+    password: str
+
+
+class Token(SQLModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(SQLModel):
+    username: Optional[str] = None
+
+
 # --- Collections Model (many-to-many with chess_sets) ---
 class CollectionBase(SQLModel):
     name: str = Field(max_length=255, index=True)
@@ -36,6 +82,9 @@ class Collection(CollectionBase, table=True):
     __tablename__ = "collections"
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
+    
+    user_id: Optional[int] = Field(default=None, foreign_key="users.id")
+    user: Optional[User] = Relationship(back_populates="collections")
 
     # Relationship to sets via association
     sets: List["ChessSet"] = Relationship(back_populates="collections", link_model=CollectionSet)
@@ -69,6 +118,9 @@ class ChessSet(ChessSetBase, table=True):
         default_factory=datetime.utcnow,
         sa_column=Column(DateTime, nullable=False)
     )
+    
+    user_id: Optional[int] = Field(default=None, foreign_key="users.id")
+    user: Optional[User] = Relationship(back_populates="sets")
     
     # Relationships
     pieces: List["ChessPiece"] = Relationship(
