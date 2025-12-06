@@ -12,6 +12,8 @@ from app.database import create_db_and_tables, get_session
 from app.api import sets, pieces, auth
 from app.api import collections
 from app.api.chess_engine import router as chess_router
+from app.api.ai_generation import router as ai_router
+from app.api.prices import router as prices_router
 from app.services.seeding import seed_if_needed
 
 
@@ -70,6 +72,8 @@ app.include_router(sets.router, prefix="/api")
 app.include_router(pieces.router, prefix="/api")
 app.include_router(collections.router, prefix="/api")
 app.include_router(chess_router, prefix="/api")
+app.include_router(ai_router, prefix="/api")
+app.include_router(prices_router, prefix="/api")
 
 
 # Custom endpoint for serving uploaded files with CORS

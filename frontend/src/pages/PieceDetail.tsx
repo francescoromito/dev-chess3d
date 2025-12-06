@@ -14,6 +14,7 @@ import ImageCard from '../components/ImageCard';
 import ModelCard from '../components/ModelCard';
 import ImagePlaceholder from '../components/ImagePlaceholder';
 import ModelPlaceholder from '../components/ModelPlaceholder';
+import AIImageEditor from '../components/AIImageEditor';
 
 export default function PieceDetail() {
   const { pieceId } = useParams<{ pieceId: string }>();
@@ -25,6 +26,11 @@ export default function PieceDetail() {
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [isImporting, setIsImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
+  
+  // AI Image Editor state
+  const [aiEditorOpen, setAiEditorOpen] = useState(false);
+  const [aiEditorField, setAiEditorField] = useState<string | null>(null);
+  const [aiEditorVersionId, setAiEditorVersionId] = useState<number | null>(null);
   
   // State for import name conflict modal
   const [importConflictModal, setImportConflictModal] = useState<{
@@ -177,6 +183,18 @@ export default function PieceDetail() {
       versionId, 
       data: { [fieldName]: file } 
     });
+  };
+
+  const handleOpenAIEditor = (versionId: number, field: string) => {
+    setAiEditorVersionId(versionId);
+    setAiEditorField(field);
+    setAiEditorOpen(true);
+  };
+
+  const handleAIGenerate = (generatedImages: File[]) => {
+    if (generatedImages.length > 0 && aiEditorVersionId && aiEditorField) {
+      handleFileChange(aiEditorVersionId, aiEditorField, generatedImages[0]);
+    }
   };
 
   const handleSetFavorite = (versionId: number) => {
@@ -409,9 +427,15 @@ export default function PieceDetail() {
                       fieldName="img_front"
                       onImageChange={(field, file) => handleFileChange(version.id, field, file)}
                       onRemove={() => { if (confirm('Rimuovere immagine Fronte?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_front' }); }}
+                      onAIEdit={() => handleOpenAIEditor(version.id, 'img_front')}
                     />
                   ) : (
-                    <ImagePlaceholder label="Fronte" onUpload={(file) => handleFileChange(version.id, 'img_front', file)} accept="image/*" />
+                    <ImagePlaceholder 
+                      label="Fronte" 
+                      onUpload={(file) => handleFileChange(version.id, 'img_front', file)} 
+                      accept="image/*"
+                      onAIEdit={() => handleOpenAIEditor(version.id, 'img_front')}
+                    />
                   )}
                   {version.img_back ? (
                     <ImageCard
@@ -421,9 +445,15 @@ export default function PieceDetail() {
                       fieldName="img_back"
                       onImageChange={(field, file) => handleFileChange(version.id, field, file)}
                       onRemove={() => { if (confirm('Rimuovere immagine Retro?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_back' }); }}
+                      onAIEdit={() => handleOpenAIEditor(version.id, 'img_back')}
                     />
                   ) : (
-                    <ImagePlaceholder label="Retro" onUpload={(file) => handleFileChange(version.id, 'img_back', file)} accept="image/*" />
+                    <ImagePlaceholder 
+                      label="Retro" 
+                      onUpload={(file) => handleFileChange(version.id, 'img_back', file)} 
+                      accept="image/*"
+                      onAIEdit={() => handleOpenAIEditor(version.id, 'img_back')}
+                    />
                   )}
                   {version.img_side_r ? (
                     <ImageCard
@@ -433,9 +463,15 @@ export default function PieceDetail() {
                       fieldName="img_side_r"
                       onImageChange={(field, file) => handleFileChange(version.id, field, file)}
                       onRemove={() => { if (confirm('Rimuovere immagine Destra?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_side_r' }); }}
+                      onAIEdit={() => handleOpenAIEditor(version.id, 'img_side_r')}
                     />
                   ) : (
-                    <ImagePlaceholder label="Destra" onUpload={(file) => handleFileChange(version.id, 'img_side_r', file)} accept="image/*" />
+                    <ImagePlaceholder 
+                      label="Destra" 
+                      onUpload={(file) => handleFileChange(version.id, 'img_side_r', file)} 
+                      accept="image/*"
+                      onAIEdit={() => handleOpenAIEditor(version.id, 'img_side_r')}
+                    />
                   )}
                   {version.img_side_l ? (
                     <ImageCard
@@ -445,9 +481,15 @@ export default function PieceDetail() {
                       fieldName="img_side_l"
                       onImageChange={(field, file) => handleFileChange(version.id, field, file)}
                       onRemove={() => { if (confirm('Rimuovere immagine Sinistra?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_side_l' }); }}
+                      onAIEdit={() => handleOpenAIEditor(version.id, 'img_side_l')}
                     />
                   ) : (
-                    <ImagePlaceholder label="Sinistra" onUpload={(file) => handleFileChange(version.id, 'img_side_l', file)} accept="image/*" />
+                    <ImagePlaceholder 
+                      label="Sinistra" 
+                      onUpload={(file) => handleFileChange(version.id, 'img_side_l', file)} 
+                      accept="image/*"
+                      onAIEdit={() => handleOpenAIEditor(version.id, 'img_side_l')}
+                    />
                   )}
                 </div>
               </div>
@@ -555,6 +597,17 @@ export default function PieceDetail() {
           </div>
         </div>
       )}
+
+      {/* AI Image Editor */}
+      <AIImageEditor
+        isOpen={aiEditorOpen}
+        onClose={() => {
+          setAiEditorOpen(false);
+          setAiEditorField(null);
+          setAiEditorVersionId(null);
+        }}
+        onGenerate={handleAIGenerate}
+      />
     </div>
   );
 }

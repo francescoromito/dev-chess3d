@@ -3,7 +3,7 @@
  * Displays an image as a clickable card that opens in a modal with edit option
  */
 import { useState, useRef } from 'react';
-import { X, ZoomIn, Edit, Trash2 } from 'lucide-react';
+import { X, ZoomIn, Edit, Trash2, Sparkles } from 'lucide-react';
 
 interface ImageCardProps {
   src: string;
@@ -12,9 +12,10 @@ interface ImageCardProps {
   fieldName: string;
   onImageChange?: (fieldName: string, file: File) => void;
   onRemove?: () => void;
+  onAIEdit?: () => void;
 }
 
-export default function ImageCard({ src, alt, label, fieldName, onImageChange, onRemove }: ImageCardProps) {
+export default function ImageCard({ src, alt, label, fieldName, onImageChange, onRemove, onAIEdit }: ImageCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

@@ -117,11 +117,30 @@ export default function CreateVersionModal({
     setAiEditorOpen(true);
   };
 
-  const handleAIGenerate = (prompt: string, selectedImages: File[]) => {
-    // Backend integration will come later
-    console.log('AI Generate:', { field: currentEditingField, prompt, images: selectedImages });
-    // For now, just close the editor
-    // Later: handle generated image and set it to the appropriate field
+  const handleAIGenerate = (generatedImages: File[]) => {
+    // Take the first generated image and set it to the current field
+    if (generatedImages.length > 0 && currentEditingField) {
+      const firstImage = generatedImages[0];
+      
+      switch (currentEditingField) {
+        case 'front':
+          setImgFront(firstImage);
+          break;
+        case 'back':
+          setImgBack(firstImage);
+          break;
+        case 'sideR':
+          setImgSideR(firstImage);
+          break;
+        case 'sideL':
+          setImgSideL(firstImage);
+          break;
+      }
+    }
+    
+    // Close editor
+    setAiEditorOpen(false);
+    setCurrentEditingField(null);
   };
 
   if (!isOpen) return null;

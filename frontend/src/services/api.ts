@@ -467,6 +467,40 @@ export const chessEngineApi = {
   },
 };
 
+// AI Image Generation API
+export interface GenerateImageRequest {
+  prompt: string;
+  model_name?: 'fal-ai/nano-banana';
+  num_images?: number; // 1-4
+}
+
+export interface ImageResult {
+  url: string;
+  content_type: string;
+}
+
+export interface GenerateImageResponse {
+  images: ImageResult[];
+  request_id: string;
+  model_used: string;
+  num_generated: number;
+}
+
+export const aiApi = {
+  /**
+   * Generate images using AI
+   * Returns URLs to generated images (1-4 variations)
+   */
+  generateImages: async (data: GenerateImageRequest): Promise<GenerateImageResponse> => {
+    const response = await api.post<GenerateImageResponse>('/ai/generate', data);
+    return response.data;
+  },
+  getPrice: async (model_name: string): Promise<{model_name: string; price_per_image: number; currency: string}> => {
+    const response = await api.get(`/ai/price/${encodeURIComponent(model_name)}`);
+    return response.data;
+  },
+};
+
 /**
  * Get the full URL for an uploaded file
  * Adds a cache-busting timestamp to force reload after updates

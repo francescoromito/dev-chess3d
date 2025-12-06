@@ -21,7 +21,7 @@ const Layout: React.FC = () => {
           <div className="flex items-center space-x-4">
             {user && (
               <>
-                <span className="text-gray-700">Credits: <span className="font-bold text-green-600">{user.credits}</span></span>
+                <span className="text-gray-700">💰 <span className="font-bold text-green-600">{user.credits}</span></span>
                 <span className="text-gray-700">Welcome, {user.username}</span>
                 <button
                   onClick={handleLogout}

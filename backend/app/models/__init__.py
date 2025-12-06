@@ -253,6 +253,16 @@ class PieceVersionRead(PieceVersionBase):
         return self.completion_percentage == 100
 
 
+# --- AI Pricing Model ---
+class Price(SQLModel, table=True):
+    __tablename__ = "ai_prices"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    model_name: str = Field(index=True, max_length=255)
+    price_per_image: float = Field(default=0.039)
+    currency: str = Field(default="USD", max_length=10)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
+
+
 # Update forward refs for relationships
 ChessSetReadWithPieces.model_rebuild()
 ChessPieceReadWithVersions.model_rebuild()

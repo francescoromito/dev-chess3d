@@ -16,6 +16,7 @@ from app.models import (
     ChessSet, ChessPiece, PieceVersion, PieceType,
     Collection, CollectionSet
 )
+from app.models import Price
 
 
 # Collection name for default sets
@@ -370,3 +371,12 @@ def seed_if_needed(session: Session) -> None:
         run_seeding(session)
     else:
         print("📬 Database already has data, skipping seeding")
+
+    # Ensure AI price entry exists for default model(s)
+    existing_price = session.exec(select(Price).where(Price.model_name == "fal-ai/nano-banana")).first()
+    if not existing_price:
+        default = Price(model_name="fal-ai/nano-banana", price_per_image=0.039, currency="USD")
+        session.add(default)
+        session.commit()
+        session.refresh(default)
+        print(f"✅ Seeded default price for {default.model_name}: {default.price_per_image} {default.currency}")
