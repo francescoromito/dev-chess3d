@@ -7,10 +7,12 @@ services:
     restart: unless-stopped
     ports:
       - "5432:5432"  # Esposto esternamente per accesso da fuori Docker
+    env_file:
+      - .env
     environment:
-      - POSTGRES_USER=chess_user
-      - POSTGRES_PASSWORD=chess_password
-      - POSTGRES_DB=chess_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -31,8 +33,10 @@ services:
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads  # Bind mount - file visibili nel progetto
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://chess_user:chess_password@db:5432/chess_db
+      - DATABASE_URL=${DATABASE_URL}
       - UPLOAD_DIR=/app/uploads
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
@@ -51,11 +55,13 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    env_file:
+      - .env
     environment:
       # For development the app is served to your host browser; the browser must reach
       # the backend via the host address. Keep localhost so requests go to the host port
       # that is forwarded to the backend container (we expose 8000:8000).
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=${VITE_API_URL}
     command: npm run dev
     depends_on:
       - backend

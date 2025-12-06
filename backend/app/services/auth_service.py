@@ -3,9 +3,10 @@ from typing import Optional, Union, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.models import User
+import os
 
-# Configuration (should be in env vars)
-SECRET_KEY = "YOUR_SUPER_SECRET_KEY_CHANGE_THIS"
+# Configuration (loaded from environment or .env)
+SECRET_KEY = os.environ.get("SECRET_KEY", "YOUR_SUPER_SECRET_KEY_CHANGE_THIS")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
