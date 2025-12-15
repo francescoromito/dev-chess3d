@@ -21,14 +21,14 @@ interface ModelViewerProps {
   baseSizeCm?: number;
   // callback with bounding box dimensions in scene units after scale, and base dimensions
   onDimensions?: (dims: { width: number; height: number; depth: number }, baseSize: { width: number; height: number; depth: number }) => void;
-  // callback to report the model's scaled height for base plane positioning
-  onModelHeight?: (height: number) => void;
+  // callback to report the model's lowest Y (box.min.y * scale.y) for base plane positioning
+  onModelBottom?: (bottomY: number) => void;
 }
 
 /**
  * STL Model component
  */
-function STLModel({ url, rotation, meshRef, scale = { x: 1, y: 1, z: 1 }, onDimensions, onModelHeight }: { url: string; rotation?: { x?: number; y?: number; z?: number }; meshRef: React.RefObject<THREE.Mesh>; scale?: { x: number; y: number; z: number }; onDimensions?: (dims: { width: number; height: number; depth: number }, baseSize: { width: number; height: number; depth: number }) => void; onModelHeight?: (height: number) => void }) {
+function STLModel({ url, rotation, meshRef, scale = { x: 1, y: 1, z: 1 }, onDimensions, onModelBottom }: { url: string; rotation?: { x?: number; y?: number; z?: number }; meshRef: React.RefObject<THREE.Mesh>; scale?: { x: number; y: number; z: number }; onDimensions?: (dims: { width: number; height: number; depth: number }, baseSize: { width: number; height: number; depth: number }) => void; onModelBottom?: (bottomY: number) => void }) {
   const geometry = useLoader(STLLoader, url);
   const [hovered, setHovered] = useState(false);
 
@@ -64,12 +64,13 @@ function STLModel({ url, rotation, meshRef, scale = { x: 1, y: 1, z: 1 }, onDime
     }
   }, [geometry, scale, onDimensions, baseSize]);
 
-  // report scaled height for base plane positioning
+  // report bottom Y for base plane positioning (box.min.y * scale.y)
   useEffect(() => {
-    if (onModelHeight) {
-      onModelHeight(baseSize.height * scale.y);
+    if (onModelBottom && geometry.boundingBox) {
+      const minY = geometry.boundingBox.min.y * scale.y;
+      onModelBottom(minY);
     }
-  }, [baseSize.height, scale.y, onModelHeight]);
+  }, [geometry, scale.y, onModelBottom]);
 
   return (
     <mesh
@@ -93,7 +94,7 @@ function STLModel({ url, rotation, meshRef, scale = { x: 1, y: 1, z: 1 }, onDime
 /**
  * GLB/GLTF Model component
  */
-function GLBModel({ url, rotation, groupRef, scale = { x: 1, y: 1, z: 1 }, onDimensions, onModelHeight }: { url: string; rotation?: { x?: number; y?: number; z?: number }; groupRef: React.RefObject<THREE.Group>; scale?: { x: number; y: number; z: number }; onDimensions?: (dims: { width: number; height: number; depth: number }, baseSize: { width: number; height: number; depth: number }) => void; onModelHeight?: (height: number) => void }) {
+function GLBModel({ url, rotation, groupRef, scale = { x: 1, y: 1, z: 1 }, onDimensions, onModelBottom }: { url: string; rotation?: { x?: number; y?: number; z?: number }; groupRef: React.RefObject<THREE.Group>; scale?: { x: number; y: number; z: number }; onDimensions?: (dims: { width: number; height: number; depth: number }, baseSize: { width: number; height: number; depth: number }) => void; onModelBottom?: (bottomY: number) => void }) {
   // Clear cache for this URL when component mounts to ensure fresh load
   useEffect(() => {
     return () => {
@@ -129,29 +130,32 @@ function GLBModel({ url, rotation, groupRef, scale = { x: 1, y: 1, z: 1 }, onDim
       }, baseSize);
     }
     
-    if (onModelHeight) {
-      onModelHeight(size.y * scale.y);
+    if (onModelBottom) {
+      // compute bottom Y (box.min.y) and scale it
+      const bottomY = box.min.y * scale.y;
+      onModelBottom(bottomY);
     }
-  }, [scene, scale, onDimensions, onModelHeight]);
+  }, [scene, scale, onDimensions, onModelBottom]);
 
+  // Return the raw group; centering will be handled by the parent so the base plane
+  // receives the same centering transform as the model.
   return (
-    <Center>
-      <group ref={groupRef} scale={[scale.x, scale.y, scale.z]}>
-        <primitive object={scene.clone()} />
-      </group>
-    </Center>
+    <group ref={groupRef} scale={[scale.x, scale.y, scale.z]}>
+      <primitive object={scene.clone()} />
+    </group>
   );
 }
 
 /**
  * Black base plane component - positioned below the model
  */
-function BasePlane({ sizeCm, modelHeight }: { sizeCm: number; modelHeight: number }) {
+function BasePlane({ sizeCm, modelBottom }: { sizeCm: number; modelBottom: number }) {
   if (!sizeCm || sizeCm <= 0) return null;
-  // Position plane at the bottom of the model (model is centered, so bottom is at -height/2)
-  const yPosition = -modelHeight / 2 - 0.01;
+  // Position plane at the model's bottom (box.min.y) minus a small offset
+  // Keep plane at the world origin (y=0). Model will be translated so its bottom aligns above this plane.
+  const planeY = 0;
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, yPosition, 0]} receiveShadow>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, planeY, 0]} receiveShadow>
       <planeGeometry args={[sizeCm, sizeCm]} />
       <meshStandardMaterial color="#111111" />
     </mesh>
@@ -176,7 +180,25 @@ function LoadingPlaceholder() {
 const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, scale = { x: 1, y: 1, z: 1 }, baseSizeCm = 0, onDimensions }: ModelViewerProps, ref) {
   const stlMeshRef = useRef<THREE.Mesh>(null!);
   const glbGroupRef = useRef<THREE.Group>(null!);
-  const [modelHeight, setModelHeight] = useState(0);
+  const [modelBottom, setModelBottom] = useState(0);
+
+  // small offset to lift model above the plane to avoid z-fighting
+  const planeOffset = 0.01;
+
+  // When modelBottom updates, translate the model so its bottom aligns above the plane
+  useEffect(() => {
+    const targetY = -modelBottom + planeOffset;
+    try {
+      if (glbGroupRef.current) {
+        glbGroupRef.current.position.y = targetY;
+      }
+      if (stlMeshRef.current) {
+        stlMeshRef.current.position.y = targetY;
+      }
+    } catch (e) {
+      // ignore if refs not ready
+    }
+  }, [modelBottom, planeOffset]);
 
   useImperativeHandle(ref, () => ({
     exportSTL: async (): Promise<Blob | null> => {
@@ -385,20 +407,20 @@ const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, s
         
         {/* Model */}
         <Suspense fallback={<LoadingPlaceholder />}>
-          {/* Black base plane - positioned below model */}
-          {baseSizeCm > 0 && <BasePlane sizeCm={baseSizeCm} modelHeight={modelHeight} />}
-          <Stage
-            environment="city"
-            intensity={0.5}
-            adjustCamera={1.5}
-            shadows={{ type: 'contact', blur: 2, opacity: 0.5 }}
-          >
-            {fileType === 'stl' ? (
-              <STLModel url={url} rotation={rotation} meshRef={stlMeshRef} scale={scale} onDimensions={onDimensions} onModelHeight={setModelHeight} />
-            ) : (
-              <GLBModel url={url} rotation={rotation} groupRef={glbGroupRef} scale={scale} onDimensions={onDimensions} onModelHeight={setModelHeight} />
-            )}
-          </Stage>
+            <Stage
+              environment="city"
+              intensity={0.5}
+              adjustCamera={1.5}
+              shadows={{ type: 'contact', blur: 2, opacity: 0.5 }}
+            >
+              {/* Render plane at world origin and position model explicitly so its bottom sits on the plane */}
+              {baseSizeCm > 0 && <BasePlane sizeCm={baseSizeCm} modelBottom={modelBottom} />}
+              {fileType === 'stl' ? (
+                <STLModel url={url} rotation={rotation} meshRef={stlMeshRef} scale={scale} onDimensions={onDimensions} onModelBottom={setModelBottom} />
+              ) : (
+                <GLBModel url={url} rotation={rotation} groupRef={glbGroupRef} scale={scale} onDimensions={onDimensions} onModelBottom={setModelBottom} />
+              )}
+            </Stage>
         </Suspense>
         
         {/* Controls */}

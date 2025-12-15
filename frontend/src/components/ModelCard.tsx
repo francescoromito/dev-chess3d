@@ -139,7 +139,7 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="relative w-full max-w-4xl h-[80vh] bg-slate-900 rounded-xl overflow-hidden shadow-2xl"
+            className="relative w-[80vw] h-[85vh] max-w-none bg-slate-900 rounded-xl overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -302,7 +302,7 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
                   />
                 </div>
                 {/* Size and dimension controls - for both STL and GLB */}
-                <div className="w-80 p-4 pt-16 bg-slate-800 border-l border-slate-700 overflow-y-auto">
+                <div className="w-[25%] p-4 pt-16 bg-slate-800 border-l border-slate-700 overflow-y-auto">
                   {/* Size Presets Buttons */}
                   <h4 className="text-sm text-white mb-2">Dimensioni</h4>
                   <div className="flex gap-2 mb-4">
@@ -354,6 +354,26 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
                             onChange={(e) => setBaseSizeCm(Number(e.target.value))}
                             className="w-full mt-1 px-2 py-1 bg-slate-700 text-white text-xs rounded"
                           />
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => { setBaseSizeCm(sizePresets.presets.small.baseSizeCm); }}
+                              className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 rounded"
+                            >
+                              Piccola
+                            </button>
+                            <button
+                              onClick={() => { setBaseSizeCm(sizePresets.presets.medium.baseSizeCm); }}
+                              className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 rounded"
+                            >
+                              Media
+                            </button>
+                            <button
+                              onClick={() => { setBaseSizeCm(sizePresets.presets.large.baseSizeCm); }}
+                              className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 rounded"
+                            >
+                              Grande
+                            </button>
+                          </div>
                           <p className="text-xs text-slate-400 mt-1">0 = nascosto</p>
                         </div>
                       </div>
