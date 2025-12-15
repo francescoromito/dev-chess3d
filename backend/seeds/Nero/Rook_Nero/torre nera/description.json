@@ -1,11 +1,11 @@
 {
   "piece_type": "Rook",
-  "piece_id": 3,
+  "piece_id": 39,
   "piece_name": null,
   "piece_description": null,
-  "version_id": 4,
+  "version_id": 26,
   "version_name": "torre nera",
-  "version_created": "2025-12-05T17:32:55.047873",
-  "chess_set_name": "Nero",
-  "chess_set_id": 1
+  "version_created": "2025-12-13T16:32:05.984144",
+  "chess_set_name": "Nero (1)",
+  "chess_set_id": 7
 }

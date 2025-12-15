@@ -309,7 +309,8 @@ def download_chess_set_zip(set_id: int, session: Session = Depends(get_session))
 async def import_chess_set_from_zip(
     zip_file: UploadFile = File(...),
     custom_set_name: Optional[str] = Form(None),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ) -> ChessSetReadWithPieces:
     """
     Import a chess set from a ZIP archive.
@@ -406,8 +407,8 @@ async def import_chess_set_from_zip(
                 except Exception:
                     pass
             
-            # Create the chess set
-            db_set = ChessSet(name=set_name, description=set_description)
+            # Create the chess set, associandola all'utente corrente
+            db_set = ChessSet(name=set_name, description=set_description, user_id=current_user.id)
             session.add(db_set)
             session.commit()
             session.refresh(db_set)

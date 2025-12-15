@@ -1,11 +1,11 @@
 {
   "piece_type": "King",
-  "piece_id": 1,
+  "piece_id": 37,
   "piece_name": null,
   "piece_description": null,
-  "version_id": 5,
+  "version_id": 24,
   "version_name": "Re nero",
-  "version_created": "2025-12-05T17:34:32.374176",
-  "chess_set_name": "Nero",
-  "chess_set_id": 1
+  "version_created": "2025-12-13T16:32:03.313564",
+  "chess_set_name": "Nero (1)",
+  "chess_set_id": 7
 }
