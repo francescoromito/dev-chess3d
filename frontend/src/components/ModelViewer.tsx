@@ -4,7 +4,7 @@
  */
 import { Suspense, useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
-import { OrbitControls, Center, Stage, useGLTF } from '@react-three/drei';
+import { OrbitControls, Stage, useGLTF } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
@@ -71,6 +71,7 @@ function STLModel({ url, rotation, meshRef, scale = { x: 1, y: 1, z: 1 }, onDime
       onModelBottom(minY);
     }
   }, [geometry, scale.y, onModelBottom]);
+
 
   return (
     <mesh
@@ -199,6 +200,27 @@ const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, s
       // ignore if refs not ready
     }
   }, [modelBottom, planeOffset]);
+
+  // Center model (X,Z) and align bottom (Y) in a single deterministic place
+  useEffect(() => {
+    const target = (fileType === 'stl' ? stlMeshRef.current : glbGroupRef.current) || glbGroupRef.current || stlMeshRef.current;
+    if (!target) return;
+    try {
+      // ensure world matrices are up to date
+      target.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(target);
+      if (box.isEmpty()) return;
+      const center = box.getCenter(new THREE.Vector3());
+      const minY = box.min.y;
+      const targetY = -minY + planeOffset;
+      // Apply positions in world/local space — set local position so model center is at origin
+      target.position.x = -center.x;
+      target.position.z = -center.z;
+      target.position.y = targetY;
+    } catch (e) {
+      // ignore when not ready
+    }
+  }, [url, fileType, rotation, scale.x, scale.y, scale.z, planeOffset]);
 
   useImperativeHandle(ref, () => ({
     exportSTL: async (): Promise<Blob | null> => {
@@ -410,7 +432,7 @@ const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, s
             <Stage
               environment="city"
               intensity={0.5}
-              adjustCamera={1.5}
+              adjustCamera={false}
               shadows={{ type: 'contact', blur: 2, opacity: 0.5 }}
             >
               {/* Render plane at world origin and position model explicitly so its bottom sits on the plane */}
@@ -429,8 +451,8 @@ const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, s
           enablePan={true}
           enableZoom={true}
           enableRotate={true}
-          minDistance={1}
-          maxDistance={20}
+          minDistance={0.5}
+          maxDistance={100}
           autoRotate={false}
         />
       </Canvas>

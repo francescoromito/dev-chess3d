@@ -151,7 +151,7 @@ async def generate_image(
         logger.info(f"Generation request submitted: request_id={request_id}, status_url={status_url}")
         
         # Poll for completion (with timeout)
-        max_wait_time = 120  # 2 minutes max
+        max_wait_time = 180  # 3 minutes max
         poll_interval = 2  # seconds
         elapsed = 0
         
