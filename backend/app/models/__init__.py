@@ -253,6 +253,57 @@ class PieceVersionRead(PieceVersionBase):
         return self.completion_percentage == 100
 
 
+# --- Image Generation Model ---
+class ImageGenerationStatus(str, Enum):
+    """Enum for image generation status"""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class GeneratedImageBase(SQLModel):
+    """Base for a single generated image"""
+    url: str = Field(max_length=500)
+    selected: bool = Field(default=False)
+
+
+class GeneratedImage(GeneratedImageBase):
+    """Generated image with timestamp"""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ImageGenerationBase(SQLModel):
+    """Base for image generation"""
+    user_id: int = Field(foreign_key="users.id", index=True)
+    piece_id: Optional[int] = Field(default=None, foreign_key="chess_pieces.id")
+    view_type: str = Field(max_length=50, index=True)  # rotate_clockwise, rotate_counter, back
+    request_id: str = Field(max_length=255, index=True)
+    status: ImageGenerationStatus = Field(default=ImageGenerationStatus.PENDING)
+    num_images: int = Field(default=1, ge=1, le=4)
+    front_image_url: str = Field(max_length=500)
+    generated_images: List[dict] = Field(default_factory=list, sa_column=Column(JSON))  # [{url, selected}, ...]
+    selected_image_url: Optional[str] = Field(default=None, max_length=500)
+    cost: float = Field(default=0.0)
+
+
+class ImageGeneration(ImageGenerationBase, table=True):
+    __tablename__ = "image_generations"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
+    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
+
+
+class ImageGenerationCreate(ImageGenerationBase):
+    pass
+
+
+class ImageGenerationRead(ImageGenerationBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
 # --- AI Pricing Model ---
 class Price(SQLModel, table=True):
     __tablename__ = "ai_prices"

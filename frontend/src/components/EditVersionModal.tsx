@@ -3,8 +3,9 @@
  * Allows editing/replacing images and models in an existing version
  */
 import { useState, useRef } from 'react';
-import { X, Upload, Image, Trash2, Check } from 'lucide-react';
+import { X, Upload, Image, Trash2, Check, Wand2, ImagePlus, RefreshCw } from 'lucide-react';
 import type { PieceVersion } from '../types';
+import AIImageEditor from './AIImageEditor';
 
 interface EditVersionModalProps {
   isOpen: boolean;
@@ -40,6 +41,14 @@ export default function EditVersionModal({
   const [newModels, setNewModels] = useState<{ model_glb?: File; model_stl?: File }>({});
   const [previewUrls, setPreviewUrls] = useState<Partial<Record<ImageField, string>>>({});
   
+  // AI Editor state
+  const [aiEditorOpen, setAiEditorOpen] = useState(false);
+  const [currentEditingField, setCurrentEditingField] = useState<ImageField | null>(null);
+  const [aiEditType, setAiEditType] = useState<'rotate_90_cw' | 'rotate_90_ccw' | 'back_view' | 'generic_edit'>('generic_edit');
+  const [aiAutoSubmit, setAiAutoSubmit] = useState(false);
+  const [aiInitialImage, setAiInitialImage] = useState<File | undefined>();
+  const [isFetchingFront, setIsFetchingFront] = useState(false);
+
   const fileInputRefs = {
     img_front: useRef<HTMLInputElement>(null),
     img_back: useRef<HTMLInputElement>(null),
@@ -80,6 +89,66 @@ export default function EditVersionModal({
         return newState;
       });
     }
+  };
+
+  const openAIEditor = async (
+    field: ImageField, 
+    editType: 'rotate_90_cw' | 'rotate_90_ccw' | 'back_view' | 'generic_edit' = 'generic_edit',
+    autoSubmit: boolean = false
+  ) => {
+    setCurrentEditingField(field);
+    setAiEditType(editType);
+    setAiAutoSubmit(autoSubmit);
+
+    if (editType !== 'generic_edit') {
+      // We need the front image as base
+      setIsFetchingFront(true);
+      try {
+        let frontFile: File | undefined;
+        if (newImages.img_front) {
+          frontFile = newImages.img_front;
+        } else if (version.img_front) {
+          const url = getFileUrl(version.img_front);
+          if (url) {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            frontFile = new File([blob], 'front.png', { type: 'image/png' });
+          }
+        }
+        setAiInitialImage(frontFile);
+      } catch (err) {
+        console.error('Failed to fetch front image:', err);
+        alert('Impossibile recuperare l\'immagine frontale per la generazione.');
+        setIsFetchingFront(false);
+        return;
+      }
+      setIsFetchingFront(false);
+    } else {
+      // Generic edit on the current field image
+      let currentFile: File | undefined;
+      if (newImages[field]) {
+        currentFile = newImages[field];
+      } else if (version[field]) {
+        const url = getFileUrl(version[field]);
+        if (url) {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          currentFile = new File([blob], `${field}.png`, { type: 'image/png' });
+        }
+      }
+      setAiInitialImage(currentFile);
+    }
+
+    setAiEditorOpen(true);
+  };
+
+  const handleAIGenerate = (generatedImages: File[]) => {
+    if (generatedImages.length > 0 && currentEditingField) {
+      handleImageChange(currentEditingField, generatedImages[0]);
+    }
+    setAiEditorOpen(false);
+    setCurrentEditingField(null);
+    setAiInitialImage(undefined);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -153,9 +222,10 @@ export default function EditVersionModal({
                 {(Object.keys(imageLabels) as ImageField[]).map((field) => {
                   const currentUrl = getCurrentImageUrl(field);
                   const hasNewImage = !!newImages[field];
+                  const isFrontAvailable = !!newImages.img_front || !!version.img_front;
                   
                   return (
-                    <div key={field} className="relative">
+                    <div key={field} className="relative group/card">
                       <input
                         ref={fileInputRefs[field]}
                         type="file"
@@ -165,35 +235,79 @@ export default function EditVersionModal({
                       />
                       
                       <div
-                        onClick={() => fileInputRefs[field].current?.click()}
                         className={`
-                          aspect-square rounded-lg border-2 border-dashed cursor-pointer
+                          aspect-square rounded-lg border-2 border-dashed
                           flex flex-col items-center justify-center overflow-hidden
-                          transition-all hover:border-blue-400 hover:bg-blue-50
+                          transition-all
                           ${currentUrl ? 'border-gray-200 bg-gray-50' : 'border-gray-300'}
                           ${hasNewImage ? 'ring-2 ring-green-500' : ''}
                         `}
                       >
                         {currentUrl ? (
-                          <>
+                          <div className="relative w-full h-full">
                             <img
                               src={currentUrl}
                               alt={imageLabels[field]}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain p-1"
                             />
-                            <div className="absolute inset-0 bg-black/0 hover:bg-black/30 flex items-center justify-center transition-colors">
-                              <Upload className="w-8 h-8 text-white opacity-0 hover:opacity-100 transition-opacity" />
+                            {/* Overlay actions */}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => fileInputRefs[field].current?.click()}
+                                className="p-2 bg-white rounded-full text-gray-700 hover:bg-blue-50 transition-colors"
+                                title="Sostituisci"
+                              >
+                                <Upload className="w-5 h-5" />
+                              </button>
+                              {field === 'img_front' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openAIEditor(field)}
+                                  className="p-2 bg-indigo-600 rounded-full text-white hover:bg-indigo-700 transition-colors"
+                                  title="Modifica con AI"
+                                >
+                                  <RefreshCw className="w-5 h-5" />
+                                </button>
+                              )}
                             </div>
-                          </>
+                          </div>
                         ) : (
-                          <>
+                          <div 
+                            onClick={() => fileInputRefs[field].current?.click()}
+                            className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50"
+                          >
                             <Upload className="w-8 h-8 text-gray-400 mb-2" />
                             <span className="text-xs text-gray-500">Carica</span>
-                          </>
+                          </div>
                         )}
                       </div>
+
+                      {/* AI Generation Buttons (only for non-front fields) */}
+                      {field !== 'img_front' && (
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                          <button
+                            type="button"
+                            disabled={!isFrontAvailable || isFetchingFront}
+                            onClick={() => openAIEditor(field, field === 'img_back' ? 'back_view' : field === 'img_side_r' ? 'rotate_90_cw' : 'rotate_90_ccw', true)}
+                            className={`p-1.5 rounded-full shadow-lg transition-all ${isFrontAvailable ? 'bg-purple-600 text-white hover:scale-110' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                            title="Genera automaticamente dal fronte"
+                          >
+                            <Wand2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!isFrontAvailable || isFetchingFront}
+                            onClick={() => openAIEditor(field, field === 'img_back' ? 'back_view' : field === 'img_side_r' ? 'rotate_90_cw' : 'rotate_90_ccw', false)}
+                            className={`p-1.5 rounded-full shadow-lg transition-all ${isFrontAvailable ? 'bg-blue-600 text-white hover:scale-110' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                            title="Modifica partendo dal fronte"
+                          >
+                            <ImagePlus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                       
-                      <p className="text-xs text-center text-gray-600 mt-1">
+                      <p className="text-xs text-center text-gray-600 mt-3">
                         {imageLabels[field]}
                       </p>
                       
@@ -307,6 +421,16 @@ export default function EditVersionModal({
           </div>
         </form>
       </div>
+
+      {/* AI Image Editor */}
+      <AIImageEditor
+        isOpen={aiEditorOpen}
+        onClose={() => setAiEditorOpen(false)}
+        onGenerate={handleAIGenerate}
+        initialImage={aiInitialImage}
+        initialEditType={aiEditType}
+        autoSubmit={aiAutoSubmit}
+      />
     </div>
   );
 }

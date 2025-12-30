@@ -2,7 +2,7 @@
  * Modal Component for Creating a New Piece Version
  */
 import { useState, FormEvent, ChangeEvent, useRef, useEffect } from 'react';
-import { X, Upload, RefreshCw } from 'lucide-react';
+import { X, Upload, RefreshCw, Wand2, ImagePlus } from 'lucide-react';
 import type { CreateVersionRequest } from '../types';
 import AIImageEditor from './AIImageEditor';
 
@@ -38,6 +38,8 @@ export default function CreateVersionModal({
   // AI Editor state
   const [aiEditorOpen, setAiEditorOpen] = useState(false);
   const [currentEditingField, setCurrentEditingField] = useState<'front' | 'back' | 'sideR' | 'sideL' | null>(null);
+  const [aiEditType, setAiEditType] = useState<'rotate_90_cw' | 'rotate_90_ccw' | 'back_view' | 'generic_edit'>('generic_edit');
+  const [aiAutoSubmit, setAiAutoSubmit] = useState(false);
 
   useEffect(() => {
     let url: string | undefined;
@@ -112,8 +114,14 @@ export default function CreateVersionModal({
     setter(file);
   };
 
-  const openAIEditor = (field: 'front' | 'back' | 'sideR' | 'sideL') => {
+  const openAIEditor = (
+    field: 'front' | 'back' | 'sideR' | 'sideL', 
+    editType: 'rotate_90_cw' | 'rotate_90_ccw' | 'back_view' | 'generic_edit' = 'generic_edit',
+    autoSubmit: boolean = false
+  ) => {
     setCurrentEditingField(field);
+    setAiEditType(editType);
+    setAiAutoSubmit(autoSubmit);
     setAiEditorOpen(true);
   };
 
@@ -258,27 +266,30 @@ export default function CreateVersionModal({
                       <img src={imgBackPreview} alt="Anteprima retro" className="absolute inset-0 w-full h-full object-contain p-2" />
                     ) : null}
 
-                    <button
-                      type="button"
-                      onClick={() => openAIEditor('back')}
-                      aria-label="Genera immagine retro"
-                      className={`absolute inset-0 z-10 flex items-center justify-center text-sm font-medium shadow ${imgBackPreview ? 'bg-indigo-600/25 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'} rounded-lg`}
-                    >
-                      {imgBackPreview ? <span className="sr-only">Genera con AI</span> : <>Genera con AI 🤖</>}
-                    </button>
-
-                    <div className="absolute top-2 right-2 flex flex-col items-center gap-2 z-40">
-                      {imgBack && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1">
+                      <div className="flex gap-1">
                         <button
                           type="button"
-                          onClick={() => openAIEditor('back')}
-                          title="Rigenera immagine"
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-gray-100 transition-colors"
+                          disabled={!imgFront}
+                          onClick={() => openAIEditor('back', 'back_view', true)}
+                          title="Genera automaticamente dal fronte"
+                          className={`p-1.5 rounded shadow-sm transition-colors ${imgFront ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                         >
-                          <RefreshCw className="w-4 h-4" />
+                          <Wand2 className="w-4 h-4" />
                         </button>
-                      )}
+                        <button
+                          type="button"
+                          disabled={!imgFront}
+                          onClick={() => openAIEditor('back', 'back_view', false)}
+                          title="Modifica partendo dal fronte"
+                          className={`p-1.5 rounded shadow-sm transition-colors ${imgFront ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                        >
+                          <ImagePlus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
 
+                    <div className="absolute top-2 right-2 flex flex-col items-center gap-2 z-40">
                       <button
                         type="button"
                         onClick={() => imgBackInputRef.current?.click()}
@@ -310,27 +321,30 @@ export default function CreateVersionModal({
                       <img src={imgSideRPreview} alt="Anteprima destra" className="absolute inset-0 w-full h-full object-contain p-2" />
                     ) : null}
 
-                    <button
-                      type="button"
-                      onClick={() => openAIEditor('sideR')}
-                      aria-label="Genera immagine destra"
-                      className={`absolute inset-0 z-10 flex items-center justify-center text-sm font-medium shadow ${imgSideRPreview ? 'bg-indigo-600/25 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'} rounded-lg`}
-                    >
-                      {imgSideRPreview ? <span className="sr-only">Genera con AI</span> : <>Genera con AI 🤖</>}
-                    </button>
-
-                    <div className="absolute top-2 right-2 flex flex-col items-center gap-2 z-40">
-                      {imgSideR && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1">
+                      <div className="flex gap-1">
                         <button
                           type="button"
-                          onClick={() => openAIEditor('sideR')}
-                          title="Rigenera immagine"
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-gray-100 transition-colors"
+                          disabled={!imgFront}
+                          onClick={() => openAIEditor('sideR', 'rotate_90_cw', true)}
+                          title="Ruota automaticamente dal fronte (90° orario)"
+                          className={`p-1.5 rounded shadow-sm transition-colors ${imgFront ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                         >
-                          <RefreshCw className="w-4 h-4" />
+                          <Wand2 className="w-4 h-4" />
                         </button>
-                      )}
+                        <button
+                          type="button"
+                          disabled={!imgFront}
+                          onClick={() => openAIEditor('sideR', 'rotate_90_cw', false)}
+                          title="Modifica ruotando dal fronte (90° orario)"
+                          className={`p-1.5 rounded shadow-sm transition-colors ${imgFront ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                        >
+                          <ImagePlus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
 
+                    <div className="absolute top-2 right-2 flex flex-col items-center gap-2 z-40">
                       <button
                         type="button"
                         onClick={() => imgSideRInputRef.current?.click()}
@@ -362,27 +376,30 @@ export default function CreateVersionModal({
                       <img src={imgSideLPreview} alt="Anteprima sinistra" className="absolute inset-0 w-full h-full object-contain p-2" />
                     ) : null}
 
-                    <button
-                      type="button"
-                      onClick={() => openAIEditor('sideL')}
-                      aria-label="Genera immagine sinistra"
-                      className={`absolute inset-0 z-10 flex items-center justify-center text-sm font-medium shadow ${imgSideLPreview ? 'bg-indigo-600/25 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'} rounded-lg`}
-                    >
-                      {imgSideLPreview ? <span className="sr-only">Genera con AI</span> : <>Genera con AI 🤖</>}
-                    </button>
-
-                    <div className="absolute top-2 right-2 flex flex-col items-center gap-2 z-40">
-                      {imgSideL && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1">
+                      <div className="flex gap-1">
                         <button
                           type="button"
-                          onClick={() => openAIEditor('sideL')}
-                          title="Rigenera immagine"
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border shadow text-gray-600 hover:bg-gray-100 transition-colors"
+                          disabled={!imgFront}
+                          onClick={() => openAIEditor('sideL', 'rotate_90_ccw', true)}
+                          title="Ruota automaticamente dal fronte (90° antiorario)"
+                          className={`p-1.5 rounded shadow-sm transition-colors ${imgFront ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                         >
-                          <RefreshCw className="w-4 h-4" />
+                          <Wand2 className="w-4 h-4" />
                         </button>
-                      )}
+                        <button
+                          type="button"
+                          disabled={!imgFront}
+                          onClick={() => openAIEditor('sideL', 'rotate_90_ccw', false)}
+                          title="Modifica ruotando dal fronte (90° antiorario)"
+                          className={`p-1.5 rounded shadow-sm transition-colors ${imgFront ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                        >
+                          <ImagePlus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
 
+                    <div className="absolute top-2 right-2 flex flex-col items-center gap-2 z-40">
                       <button
                         type="button"
                         onClick={() => imgSideLInputRef.current?.click()}
@@ -485,7 +502,9 @@ export default function CreateVersionModal({
         isOpen={aiEditorOpen}
         onClose={() => setAiEditorOpen(false)}
         onGenerate={handleAIGenerate}
-        initialImage={currentEditingField === 'front' ? imgFront : currentEditingField === 'back' ? imgBack : currentEditingField === 'sideR' ? imgSideR : currentEditingField === 'sideL' ? imgSideL : undefined}
+        initialImage={aiEditType !== 'generic_edit' ? imgFront : (currentEditingField === 'front' ? imgFront : currentEditingField === 'back' ? imgBack : currentEditingField === 'sideR' ? imgSideR : currentEditingField === 'sideL' ? imgSideL : undefined)}
+        initialEditType={aiEditType}
+        autoSubmit={aiAutoSubmit}
       />
     </div>
   );

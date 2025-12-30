@@ -13,6 +13,8 @@ interface AIImageEditorProps {
   onClose: () => void;
   onGenerate?: (generatedImages: File[]) => void;
   initialImage?: File;
+  initialEditType?: 'rotate_90_cw' | 'rotate_90_ccw' | 'back_view' | 'generic_edit';
+  autoSubmit?: boolean;
 }
 
 interface UploadedImage {
@@ -29,7 +31,9 @@ export default function AIImageEditor({
   isOpen, 
   onClose, 
   onGenerate,
-  initialImage 
+  initialImage,
+  initialEditType = 'generic_edit',
+  autoSubmit = false
 }: AIImageEditorProps) {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [prompt, setPrompt] = useState('');
@@ -42,6 +46,7 @@ export default function AIImageEditor({
   const [selectedGeneratedIndex, setSelectedGeneratedIndex] = useState<number | null>(null);
   const [showGeneratedSelection, setShowGeneratedSelection] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showPreSubmitConfirm, setShowPreSubmitConfirm] = useState(false);
   const [pricePerImage, setPricePerImage] = useState<number>(0.039);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, refreshUser } = useAuth();
@@ -51,10 +56,16 @@ export default function AIImageEditor({
     if (initialImage && isOpen) {
       const id = `img-${Date.now()}`;
       const preview = URL.createObjectURL(initialImage);
-      setImages([{ id, file: initialImage, preview, selected: true }]);
+      setImages([{ id, file: initialImage, preview, selected: true, order: 1 }]);
+      
+      // If autoSubmit is true, we skip the prompt and show confirmation immediately
+      if (autoSubmit) {
+        setShowPreSubmitConfirm(true);
+      }
+      
       return () => URL.revokeObjectURL(preview);
     }
-  }, [initialImage, isOpen]);
+  }, [initialImage, isOpen, autoSubmit]);
 
   // Cleanup previews on unmount or close
   useEffect(() => {
@@ -136,7 +147,8 @@ export default function AIImageEditor({
   };
 
   const handleSubmit = async () => {
-    if (!prompt.trim()) return;
+    // If we are not in autoSubmit mode and prompt is empty, don't proceed
+    if (!autoSubmit && !prompt.trim()) return;
     
     // Check if user has enough credits
     const totalCost = pricePerImage * numImages;
@@ -146,53 +158,98 @@ export default function AIImageEditor({
     }
     
     setIsGenerating(true);
+    setShowPreSubmitConfirm(false);
     
     try {
-      // Call backend to generate images
-      const response = await aiApi.generateImages({
-        prompt: prompt.trim(),
-        model_name: modelName,
-        num_images: numImages,
-      });
+      const selectedImages = images.filter(img => img.selected).sort((a, b) => (a.order || 0) - (b.order || 0));
       
-      console.log('Generation response:', response);
-      
-      // Check if response has images
-      if (!response || !response.images || !Array.isArray(response.images)) {
-        throw new Error('Invalid response from server: ' + JSON.stringify(response));
-      }
-      
-      // Fetch the generated images and convert to Files
-      const generatedFiles: File[] = [];
-      const previewUrls: string[] = [];
-      
-      for (let i = 0; i < response.images.length; i++) {
-        const imageUrl = response.images[i].url;
-        const imageResponse = await fetch(imageUrl);
-        const blob = await imageResponse.blob();
+      // Decide which endpoint to call based on whether images are selected
+      if (selectedImages.length === 0) {
+        // No images selected -> Use GENERATE endpoint (existing behavior)
+        const response = await aiApi.generateImages({
+          prompt: prompt.trim(),
+          model_name: modelName,
+          num_images: numImages,
+        });
         
-        // Create File from blob
-        const file = new File([blob], `generated-${Date.now()}-${i}.png`, { type: 'image/png' });
-        generatedFiles.push(file);
+        console.log('Generation response:', response);
         
-        // Create preview URL
-        const previewUrl = URL.createObjectURL(blob);
-        previewUrls.push(previewUrl);
+        if (!response || !response.images || !Array.isArray(response.images)) {
+          throw new Error('Invalid response from server: ' + JSON.stringify(response));
+        }
+        
+        // Fetch the generated images and convert to Files
+        const generatedFiles: File[] = [];
+        const previewUrls: string[] = [];
+        
+        for (let i = 0; i < response.images.length; i++) {
+          const imageUrl = response.images[i].url;
+          const imageResponse = await fetch(imageUrl);
+          const blob = await imageResponse.blob();
+          
+          const file = new File([blob], `generated-${Date.now()}-${i}.png`, { type: 'image/png' });
+          generatedFiles.push(file);
+          
+          const previewUrl = URL.createObjectURL(blob);
+          previewUrls.push(previewUrl);
+        }
+        
+        setGeneratedPreviews(previewUrls);
+        setGeneratedFiles(generatedFiles);
+        setShowGeneratedSelection(true);
+        setSelectedGeneratedIndex(null);
+        
+      } else {
+        // Images selected -> Use EDIT endpoint (new behavior)
+        // Upload selected images and get URLs
+        const uploadedUrls: string[] = [];
+        for (const image of selectedImages) {
+          const uploadResponse = await aiApi.uploadImage(image.file);
+          uploadedUrls.push(uploadResponse.url);
+        }
+        
+        // Call edit endpoint with uploaded image URLs and custom prompt
+        const editResponse = await aiApi.editImage({
+          image_url: uploadedUrls[0], // Use first uploaded image
+          edit_type: initialEditType,
+          custom_prompt: prompt.trim() || undefined,
+          num_images: numImages,
+        });
+        
+        console.log('Edit response:', editResponse);
+        
+        if (!editResponse || !editResponse.images || !Array.isArray(editResponse.images)) {
+          throw new Error('Invalid response from server: ' + JSON.stringify(editResponse));
+        }
+        
+        // Fetch the edited images and convert to Files
+        const generatedFiles: File[] = [];
+        const previewUrls: string[] = [];
+        
+        for (let i = 0; i < editResponse.images.length; i++) {
+          const imageUrl = editResponse.images[i].url;
+          const imageResponse = await fetch(imageUrl);
+          const blob = await imageResponse.blob();
+          
+          const file = new File([blob], `edited-${Date.now()}-${i}.png`, { type: 'image/png' });
+          generatedFiles.push(file);
+          
+          const previewUrl = URL.createObjectURL(blob);
+          previewUrls.push(previewUrl);
+        }
+        
+        setGeneratedPreviews(previewUrls);
+        setGeneratedFiles(generatedFiles);
+        setShowGeneratedSelection(true);
+        setSelectedGeneratedIndex(null);
       }
-      
-      setGeneratedPreviews(previewUrls);
-      setGeneratedFiles(generatedFiles);
-      setShowGeneratedSelection(true);
-      setSelectedGeneratedIndex(null);
       
       // Deduct credits and refresh user data
-      // Note: In a real app, the backend should handle this transaction
-      // For now, we refresh to get the updated credits from backend
       await refreshUser();
       
     } catch (error) {
-      console.error('Generation failed:', error);
-      alert('Generazione fallita. Riprova. Errore: ' + (error instanceof Error ? error.message : String(error)));
+      console.error('Request failed:', error);
+      alert('Operazione fallita. Riprova. Errore: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsGenerating(false);
     }
@@ -275,6 +332,7 @@ export default function AIImageEditor({
     setGeneratedFiles([]);
     setShowGeneratedSelection(false);
     setShowConfirmModal(false);
+    setShowPreSubmitConfirm(false);
     setSelectedGeneratedIndex(null);
     setIsGenerating(false);
   };
@@ -487,13 +545,13 @@ export default function AIImageEditor({
           <div className="flex items-end gap-3">
             <div className="flex-1">
               <label htmlFor="ai-prompt" className="block text-sm font-medium text-gray-700 mb-1">
-                Descrivi l'immagine da generare
+                Descrivi l'immagine da generare o modificare
               </label>
               <textarea
                 id="ai-prompt"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Es. 'Un cavallo degli scacchi in stile moderno con dettagli dorati'"
+                placeholder="Es. 'Un cavallo degli scacchi in stile moderno con dettagli dorati' o 'Ruota il pezzo di 90 gradi a destra'"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                 rows={2}
                 disabled={isGenerating}
@@ -506,20 +564,20 @@ export default function AIImageEditor({
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={handleSubmit}
-                disabled={!prompt.trim() || isGenerating}
+                onClick={() => setShowPreSubmitConfirm(true)}
+                disabled={(!prompt.trim() && !autoSubmit) || isGenerating}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium h-fit"
-                title="Genera (Ctrl+Enter)"
+                title="Genera o modifica (Ctrl+Enter)"
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Generando...
+                    Elaborando...
                   </>
                 ) : (
                   <>
                     <Send className="w-5 h-5" />
-                    Genera
+                    {images.filter(img => img.selected).length > 0 ? 'Modifica' : 'Genera'}
                   </>
                 )}
               </button>
@@ -532,7 +590,7 @@ export default function AIImageEditor({
             </div>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            💡 Le immagini caricate a sinistra saranno usate come riferimento (max 5)
+            💡 Seleziona immagini a sinistra per <strong>modificarle</strong> (max 5). Senza selezioni, <strong>genererai</strong> nuove immagini dal prompt.
           </p>
         </div>
       </div>
@@ -592,6 +650,47 @@ export default function AIImageEditor({
                   className="text-gray-600 hover:text-gray-900 font-medium"
                 >
                   Indietro
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pre-Submit Confirmation Modal */}
+      {showPreSubmitConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 text-white">
+              <h3 className="text-xl font-bold">Conferma Operazione</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">
+                Stai per generare <strong>{numImages}</strong> {numImages === 1 ? 'variante' : 'varianti'}.
+              </p>
+              <div className="bg-indigo-50 p-4 rounded-lg mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-600">Costo per immagine:</span>
+                  <span className="font-medium">💰{pricePerImage.toFixed(3)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-indigo-100">
+                  <span className="font-bold text-gray-900">Costo Totale:</span>
+                  <span className="font-bold text-indigo-600 text-lg">💰{(pricePerImage * numImages).toFixed(3)}</span>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowPreSubmitConfirm(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-bold"
+                >
+                  Conferma e Genera
                 </button>
               </div>
             </div>

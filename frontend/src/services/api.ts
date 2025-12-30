@@ -486,6 +486,27 @@ export interface GenerateImageResponse {
   num_generated: number;
 }
 
+// AI Image Editing API
+export interface EditImageRequest {
+  image_url: string;
+  edit_type: 'rotate_90_cw' | 'rotate_90_ccw' | 'back_view' | 'generic_edit';
+  custom_prompt?: string; // Required for generic_edit
+  num_images?: number; // 1-4
+}
+
+export interface EditImageResponse {
+  images: ImageResult[];
+  request_id: string;
+  edit_type: string;
+  num_generated: number;
+}
+
+export interface UploadImageResponse {
+  url: string;
+  filename: string;
+  content_type: string;
+}
+
 export const aiApi = {
   /**
    * Generate images using AI
@@ -495,6 +516,29 @@ export const aiApi = {
     const response = await api.post<GenerateImageResponse>('/ai/generate', data);
     return response.data;
   },
+  
+  /**
+   * Upload an image to FAL AI for editing
+   * Returns URL of uploaded image
+   */
+  uploadImage: async (file: File): Promise<UploadImageResponse> => {
+    const formData = new FormData();
+    formData.append('image_file', file);
+    const response = await api.post<UploadImageResponse>('/ai/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  
+  /**
+   * Edit an image using AI with predefined or custom prompts
+   * Returns URLs to edited images
+   */
+  editImage: async (data: EditImageRequest): Promise<EditImageResponse> => {
+    const response = await api.post<EditImageResponse>('/ai/edit', data);
+    return response.data;
+  },
+  
   getPrice: async (model_name: string): Promise<{model_name: string; price_per_image: number; currency: string}> => {
     const response = await api.get(`/ai/price/${encodeURIComponent(model_name)}`);
     return response.data;
