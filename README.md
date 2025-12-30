@@ -1,244 +1,259 @@
-# Chess Set Design Manager 🎨♟️
+<div align="center">
 
-Applicazione web professionale per gestire file di design per scacchiere (modelli 3D e immagini di riferimento).
+# ♟️ Chess Set Design Manager
 
-## 📋 Panoramica
+<img src="https://img.shields.io/badge/Chess_Set-Design_Manager-8B4513?style=for-the-badge&labelColor=1a1a2e" alt="Chess Set Design Manager"/>
 
-Questa applicazione permette di:
-- Creare e gestire progetti di scacchiere
-- Organizzare i 6 pezzi standard (Re, Regina, Torre, Alfiere, Cavallo, Pedone)
-- Versionare ogni pezzo con immagini di riferimento e modelli 3D
-- Caricare file GLB (anteprima 3D) e STL (stampa 3D)
+### 🎨 Design • 🤖 AI Generate • 🎮 Play
 
-## 🛠️ Tech Stack
+**La piattaforma definitiva per creare, personalizzare e giocare con set di scacchi unici**
 
-### Backend
-- **Python 3.11+** con Type Hints completi
-- **FastAPI** - Framework web moderno e veloce
-- **SQLModel** - ORM con Pydantic integration
-- **SQLite** - Database (facilmente migrabile a PostgreSQL)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React_18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Three.js](https://img.shields.io/badge/Three.js-000000?style=flat-square&logo=threedotjs&logoColor=white)](https://threejs.org/)
 
-### Frontend
-- **React 18** con TypeScript
-````markdown
-# Chess Set Design Manager 🎨♟️
+[🚀 Quick Start](#-quick-start) • [✨ Features](#-features) • [🛠 Tech Stack](#-tech-stack) • [📖 Docs](#-documentation)
 
-Applicazione web professionale per gestire file di design per scacchiere (modelli 3D e immagini di riferimento).
-
-## 📋 Panoramica
-
-Questa applicazione permette di:
-- Creare e gestire progetti di scacchiere
-- Organizzare i 6 pezzi standard (Re, Regina, Torre, Alfiere, Cavallo, Pedone)
-- Versionare ogni pezzo con immagini di riferimento e modelli 3D
-- Caricare file GLB (anteprima 3D) e STL (stampa 3D)
-
-## 🛠️ Tech Stack
-
-### Backend
-- **Python 3.11+** con Type Hints completi
-- **FastAPI** - Framework web moderno e veloce
-- **SQLModel** - ORM con Pydantic integration
-- **SQLite** - Database (facilmente migrabile a PostgreSQL)
-
-### Frontend
-- **React 18** con TypeScript
-- **Vite** - Build tool velocissimo
-- **Tailwind CSS** - Utility-first CSS
-- **Lucide React** - Icone moderne
-- **TanStack Query** - Data fetching e caching
-- **React Router** - Navigazione
-
-### Infrastructure
-- **Docker & Docker Compose**
-- **Hot-reload** abilitato per entrambi i servizi
-- **Volume mounting** per persistenza dati
-
-## 🚀 Quick Start
-
-### Requisiti
-- Docker Desktop installato e avviato
-- Porte 8000 e 5173 disponibili
-
-### Avvio
-
-```powershell
-# Clone/scarica il progetto e naviga nella directory
-cd "c:\Users\franc\Desktop\codes\food scraper"
-
-# Avvia tutto con un solo comando
-docker-compose up --build
-```
-
-### Accesso
-
-Dopo qualche minuto (prima installazione), l'applicazione sarà disponibile:
-
-- **🎨 Frontend**: http://localhost:5173
-- **🔧 Backend API**: http://localhost:8000
-- **📚 API Docs**: http://localhost:8000/docs
-
-Per istruzioni dettagliate, consulta **[QUICKSTART.md](QUICKSTART.md)**
-
-## ✨ Features
-
-- ✅ **Clean Architecture** - Separazione chiara tra layers
-- ✅ **Type Safety** - TypeScript nel frontend, Type Hints in Python
-- ✅ **Auto-Generation** - 6 pezzi creati automaticamente per ogni set
-- ✅ **Versioning System** - Gestione completa delle versioni dei pezzi
-- ✅ **File Upload** - Supporto multipart per immagini e modelli 3D
-- ✅ **Responsive UI** - Design moderno e mobile-friendly
-- ✅ **Hot-Reload** - Sviluppo rapido con ricaricamento automatico
-- ✅ **RESTful API** - Endpoints ben strutturati e documentati
-
-## 📁 Struttura del Progetto
-
-```
-chess-design-manager/
-├── backend/                    # 🐍 Python Backend
-│   ├── app/
-│   │   ├── api/               # 🌐 REST API Endpoints
-│   │   │   ├── sets.py        # Endpoints ChessSet
-│   │   │   └── pieces.py      # Endpoints PieceVersion
-│   │   ├── models/            # 📊 SQLModel Entities
-│   │   │   └── __init__.py    # ChessSet, ChessPiece, PieceVersion
-│   │   ├── services/          # 💼 Business Logic
-│   │   │   ├── chess_set_service.py
-│   │   │   └── piece_version_service.py
-│   │   ├── database.py        # 🗄️ DB Connection
-│   │   └── main.py            # 🚀 FastAPI App
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── frontend/                   # ⚛️ React Frontend
-│   ├── src/
-│   │   ├── components/        # 🧩 UI Components
-│   │   │   ├── CreateSetModal.tsx
-│   │   │   └── CreateVersionModal.tsx
-│   │   ├── pages/             # 📄 Page Components
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── SetDetail.tsx
-│   │   │   └── PieceDetail.tsx
-│   │   ├── services/          # 🔌 API Client
-│   │   │   └── api.ts         # Axios + React Query
-│   │   ├── types/             # 📝 TypeScript Types
-│   │   │   └── index.ts
-│   │   ├── App.tsx            # 🏠 Main App
-│   │   └── main.tsx
-│   ├── Dockerfile
-│   ├── package.json
-│   └── vite.config.ts
-│
-├── uploads/                    # 📦 File Storage (persistente)
-├── data/                       # 💾 SQLite Database (persistente)
-├── docker-compose.yml          # 🐳 Docker Orchestration
-├── README.md                   # 📖 Questo file
-└── QUICKSTART.md              # 🚀 Guida rapida
-```
-
-## 📊 Database Schema
-
-```
-ChessSet
-  ├── id: int (PK)
-  ├── name: string
-  ├── description: string (optional)
-  ├── created_at: datetime
-  └── pieces: ChessPiece[] (1-to-many)
-
-ChessPiece
-  ├── id: int (PK)
-  ├── set_id: int (FK)
-  ├── type: PieceType (Enum)
-  └── versions: PieceVersion[] (1-to-many)
-
-PieceVersion
-  ├── id: int (PK)
-  ├── piece_id: int (FK)
-  ├── version_name: string
-  ├── img_front: string (path)
-  ├── img_side_r: string (path)
-  ├── img_side_l: string (path)
-  ├── model_glb: string (path)
-  ├── model_stl: string (path)
-  └── created_at: datetime
-```
-
-## 🔄 User Flow
-
-1. **Dashboard** → Visualizza tutte le scacchiere + Crea nuova
-2. **Set Detail** → Visualizza i 6 pezzi della scacchiera
-3. **Piece Detail** → Gestisci versioni del pezzo (upload files)
-
-## 🧪 API Endpoints
-
-### Chess Sets
-- `GET /api/sets` - Lista tutti i set
-- `POST /api/sets` - Crea nuovo set (+ auto-genera 6 pezzi)
-- `GET /api/sets/{id}` - Dettaglio set con pezzi
-- `DELETE /api/sets/{id}` - Elimina set
-
-### Pieces & Versions
-- `GET /api/pieces/{id}` - Dettaglio pezzo con versioni
-- `GET /api/pieces/{id}/versions` - Lista versioni
-- `POST /api/pieces/{id}/versions` - Crea versione + upload files
-
-### Static Files
-- `GET /uploads/{path}` - Accesso ai file caricati
-
-## 🎯 Prossimi Sviluppi
-
-- [ ] Import/Export di set completi
-- [ ] Anteprima 3D integrata (three.js viewer)
-- [ ] Ricerca e filtri avanzati
-- [ ] Autenticazione utenti
-- [ ] Cloud storage (S3/Azure Blob)
-- [ ] PostgreSQL per produzione
-
-## 📝 Note Tecniche
-
-- **CORS**: Attualmente configurato per `allow_origins=["*"]` (solo dev)
-- **File Storage**: Filesystem locale con volume Docker persistente
-- **Database**: SQLite con schema auto-generated da SQLModel
-- **Tipizzazione**: 100% type-safe (Python Type Hints + TypeScript)
-
-## 🤝 Contributi
-
-Progetto creato con clean architecture e best practices. Facilmente estendibile e manutenibile.
-
-## 📄 Licenza
-
-Progetto personale - Tutti i diritti riservati
+</div>
 
 ---
 
-Made with ❤️ using FastAPI + React + Docker
+## ✨ Features
 
+<table>
+<tr>
+<td width="50%">
+
+### 🎨 Design Your Chess Sets
+
+Crea set di scacchi completamente personalizzati con:
+- **4 viste per pezzo** (front, back, left, right)
+- **Modelli 3D** in formato STL e GLB
+- **Multiple versioni** per ogni pezzo
+- **Sistema di preferiti** per le versioni migliori
+
+</td>
+<td width="50%">
+
+### 🤖 AI-Powered Generation
+
+Genera immagini di pezzi con intelligenza artificiale:
+- **Text-to-Image** con FAL AI
+- **Image Editing** con prompt predefiniti
+- **Vista posteriore automatica** da immagine frontale
+- **Rotazioni intelligenti** (90° CW/CCW)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🖼️ Interactive 3D Viewer
+
+Visualizza i tuoi modelli in un viewer professionale:
+- **Supporto STL e GLB/GLTF**
+- **Controlli orbit** (ruota, zoom, pan)
+- **Illuminazione Stage** professionale
+- **Export** modelli modificati
+
+</td>
+<td width="50%">
+
+### ♟️ Play Chess vs AI
+
+Gioca partite contro un'AI configurabile:
+- **Difficoltà ELO** (0-3000)
+- **Drag & Drop** intuitivo
+- **Highlight mosse legali**
+- **Timer** integrato
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📦 Import/Export ZIP
+
+Condividi i tuoi set in formato standardizzato:
+- **Export completo** del set con tutte le versioni
+- **Import** da file ZIP
+- **Struttura organizzata** per pezzo/versione
+- **Gestione conflitti** automatica
+
+</td>
+<td width="50%">
+
+### 📁 Collections
+
+Organizza i tuoi set in collezioni tematiche:
+- **Crea collezioni** personalizzate
+- **Aggiungi/rimuovi** set facilmente
+- **Condividi** collezioni pubbliche
+- **Gestione rapida** dalla dashboard
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🚀 Quick Start
+
+### Con Docker (Consigliato)
+
+```bash
+# 1. Clone
+git clone https://github.com/yourusername/chess-set-design-manager.git
+cd chess-set-design-manager
+
+# 2. Configura ambiente
+cp .env.example .env
+# Modifica .env con la tua FAL_KEY per AI
+
+# 3. Avvia
+docker-compose up -d
+
+# 🎉 Fatto!
+# Frontend: http://localhost:5173
+# API Docs: http://localhost:8000/docs
 ```
 
-## Seeding & uploads
+### Variabili d'Ambiente
 
-- **Comportamento al primo avvio**: alla prima esecuzione dell'app (database vuoto) il backend esegue una procedura di "seeding" che crea i record iniziali (collezione e set di esempio) e copia gli asset di esempio nella cartella `./uploads` presente nella root del progetto.
-- **Dove sono i file**: la cartella `./uploads` è montata nella app container come `'/app/uploads'`. I file caricati o copiati durante il seeding finiscono in questa directory sul tuo filesystem locale.
-- **Quando il seeding viene rieseguito**: il seeding viene eseguito solo se il database è vuoto (non trova alcun `ChessSet`). Se rimuovi completamente il volume del database, al prossimo `docker compose up` il backend noterà un DB vuoto e lancerà nuovamente il seeding.
+```env
+# Database
+POSTGRES_USER=chess_user
+POSTGRES_PASSWORD=chess_password
+POSTGRES_DB=chess_db
 
-### Comandi per resettare DB + uploads (PowerShell)
+# Auth
+SECRET_KEY=your_super_secret_key
 
-Esempio sicuro per resettare completamente lo stato (rimuove il volume del DB e cancella i file in `./uploads`):
-
-```powershell
-# Ferma e rimuove i container e i volumi
-docker compose down -v;
-
-# Cancella tutti i file presenti nella cartella uploads (host)
-Remove-Item -Recurse -Force .\uploads\*;
-
-# Ricostruisci e riavvia lo stack (il seed sarà eseguito se il DB è vuoto)
-docker compose up -d --build
+# AI (ottieni key da https://fal.ai)
+FAL_KEY=your_fal_api_key
 ```
 
-Nota: questi comandi sono distruttivi — esegui un backup prima se vuoi conservare i dati. Per PostgreSQL puoi usare `pg_dump` (se usi la versione con Postgres in produzione) oppure esportare i file manualmente.
+---
 
-### Suggerimento per sviluppo
+## 🛠 Tech Stack
 
-- Se osservi risposte "vuote" o connessioni chiuse durante il seeding, il motivo può essere il `--reload` usato per il backend in `docker-compose.yml` (uvicorn autoreloader). Se il processo di seeding scrive sotto `/app` (es. `/app/uploads`) il reload può riavviare il server causando richieste interrotte. Per evitare questo comportamento in ambiente di integrazione puoi rimuovere `--reload` dal comando `uvicorn` nel servizio `backend` del `docker-compose.yml`.
+<div align="center">
+
+### Frontend
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Three.js](https://img.shields.io/badge/Three.js-000000?style=for-the-badge&logo=three.js&logoColor=white)
+
+### Backend
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+
+### DevOps
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+
+</div>
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    🌐 FRONTEND                              │
+│              React + TypeScript + Three.js                  │
+│    Dashboard │ 3D Viewer │ AI Editor │ Chess Game           │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ REST API
+┌──────────────────────────▼──────────────────────────────────┐
+│                    ⚡ BACKEND                                │
+│                 FastAPI + SQLModel                          │
+│      Auth │ Sets │ Pieces │ Collections │ AI │ Chess        │
+└───────┬─────────────────┬─────────────────┬─────────────────┘
+        │                 │                 │
+   ┌────▼────┐      ┌─────▼─────┐     ┌─────▼─────┐
+   │PostgreSQL│      │ Uploads  │     │  FAL AI   │
+   │    🗄️    │      │    📁    │     │    🤖     │
+   └─────────┘      └──────────┘     └───────────┘
+```
+
+---
+
+## 📖 Documentation
+
+Per documentazione tecnica dettagliata, vedi **[README_TECHNICAL.md](README_TECHNICAL.md)**
+
+Include:
+- 📋 **API Reference** completa (39 endpoints)
+- 🗄️ **Schema database** dettagliato
+- 🔄 **Flussi di autenticazione**
+- 🧠 **Algoritmo motore scacchi**
+- 📦 **Struttura ZIP** import/export
+
+---
+
+## 📂 Project Structure
+
+```
+chess-set-design-manager/
+├── 🔧 backend/           # FastAPI + Python
+│   ├── app/api/          # REST endpoints
+│   ├── app/models/       # SQLModel entities
+│   ├── app/services/     # Business logic
+│   └── app/prompts/      # AI templates
+├── 🎨 frontend/          # React + TypeScript
+│   ├── src/components/   # UI components
+│   ├── src/pages/        # Route pages
+│   └── src/services/     # API client
+├── 📁 uploads/           # User files
+└── 🐳 docker-compose.yml # Orchestration
+```
+
+---
+
+## 🤝 Contributing
+
+Le contribuzioni sono benvenute!
+
+1. 🍴 Fork del repository
+2. 🌿 Crea un branch (`git checkout -b feature/amazing-feature`)
+3. 💾 Commit (`git commit -m 'Add amazing feature'`)
+4. 📤 Push (`git push origin feature/amazing-feature`)
+5. 🔃 Apri una Pull Request
+
+---
+
+## 📄 License
+
+Distribuito sotto licenza **MIT**. Vedi `LICENSE` per maggiori informazioni.
+
+---
+
+## 👨‍💻 About
+
+<div align="center">
+
+**Sviluppato da [Francesco Romito](https://github.com/yourusername)**
+
+*...con un po' di aiuto dai miei amici robotici* 🤖
+
+</div>
+
+Questo progetto è un esperimento di sviluppo **AI-assisted**: io ho avuto le idee (e bevuto il caffè ☕), mentre **Claude**, **GPT** e **Gemini** si sono alternati a scrivere codice, litigare sui punti e virgola, e convincermi che "funziona sul mio computer".
+
+> *Nessuna AI è stata maltrattata durante lo sviluppo. Forse solo un po' stressata.*
+
+---
+
+<div align="center">
+
+### ⭐ Se ti piace questo progetto, lascia una stella!
+
+**Made with ❤️, ☕, and a lot of AI prompts**
+
+</div>
