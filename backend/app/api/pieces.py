@@ -333,6 +333,62 @@ def download_version_zip(version_id: int, session: Session = Depends(get_session
 
     return StreamingResponse(buf, media_type='application/zip', headers=headers)
 
+@router.get("/versions/{version_id}/download-as-stl")
+def download_version_as_stl(version_id: int, session: Session = Depends(get_session)):
+    """
+    Convert the GLB model of a version to STL and stream it back.
+    The conversion preserves the original geometry (same dimensions as the GLB).
+    """
+    db_version = session.get(PieceVersion, version_id)
+    if not db_version:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Version with id {version_id} not found")
+
+    rel_glb = getattr(db_version, 'model_glb', None)
+    if not rel_glb:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No GLB model found for this version")
+
+    glb_path = PieceVersionService.UPLOAD_DIR / rel_glb
+    if not glb_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="GLB file not found on disk")
+
+    try:
+        import trimesh
+        loaded = trimesh.load(str(glb_path), force='scene')
+        # If it is a Scene (multi-mesh GLB), concatenate all geometries into one mesh
+        if isinstance(loaded, trimesh.Scene):
+            geometries = list(loaded.geometry.values())
+            if not geometries:
+                raise ValueError("GLB scene contains no meshes")
+            if len(geometries) == 1:
+                mesh = geometries[0]
+            else:
+                mesh = trimesh.util.concatenate(geometries)
+        else:
+            mesh = loaded
+
+        # Scale from mm (internal units) to cm: multiply all coordinates by 10
+        mesh.apply_scale(10.0)
+
+        # Rotate 90 degrees around X axis before export
+        import numpy as np
+        rot = trimesh.transformations.rotation_matrix(np.radians(90), [1, 0, 0])
+        mesh.apply_transform(rot)
+
+        stl_bytes = mesh.export(file_type='stl')
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"STL conversion failed: {exc}")
+
+    version_name = getattr(db_version, 'version_name', None) or f"version_{version_id}"
+    safe_name = re.sub(r'[^A-Za-z0-9_\-\.]+', '_', version_name.strip())[:200]
+    filename = f"{safe_name}.stl"
+
+    return StreamingResponse(
+        io.BytesIO(stl_bytes),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename=\"{filename}\""}
+    )
+
+
 @router.delete("/versions/{version_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_piece_version(version_id: int, session: Session = Depends(get_session)):
     """Delete a piece version and its files"""

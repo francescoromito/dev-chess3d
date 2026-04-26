@@ -2,8 +2,8 @@
  * 3D Model Viewer Component
  * Renders STL and GLB/GLTF models using React Three Fiber
  */
-import { Suspense, useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Canvas, useLoader } from '@react-three/fiber';
+import React, { Suspense, useRef, useState, useEffect, useLayoutEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls, Center, Stage, useGLTF } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
@@ -28,7 +28,7 @@ interface ModelViewerProps {
 /**
  * STL Model component
  */
-function STLModel({ url, rotation, meshRef, scale = { x: 1, y: 1, z: 1 }, onDimensions, onModelHeight }: { url: string; rotation?: { x?: number; y?: number; z?: number }; meshRef: React.RefObject<THREE.Mesh>; scale?: { x: number; y: number; z: number }; onDimensions?: (dims: { width: number; height: number; depth: number }, baseSize: { width: number; height: number; depth: number }) => void; onModelHeight?: (height: number) => void }) {
+function STLModel({ url, rotation, meshRef, scale = { x: 1, y: 1, z: 1 }, onDimensions, baseSizeCm = 0 }: { url: string; rotation?: { x?: number; y?: number; z?: number }; meshRef: React.RefObject<THREE.Mesh>; scale?: { x: number; y: number; z: number }; onDimensions?: (dims: { width: number; height: number; depth: number }, baseSize: { width: number; height: number; depth: number }) => void; baseSizeCm?: number }) {
   const geometry = useLoader(STLLoader, url);
   const [hovered, setHovered] = useState(false);
 
@@ -64,36 +64,53 @@ function STLModel({ url, rotation, meshRef, scale = { x: 1, y: 1, z: 1 }, onDime
     }
   }, [geometry, scale, onDimensions, baseSize]);
 
-  // report scaled height for base plane positioning
-  useEffect(() => {
-    if (onModelHeight) {
-      onModelHeight(baseSize.height * scale.y);
+  const stlPlaneRef = useRef<THREE.Mesh>(null!);
+
+  // After every render, measure the mesh's actual world bbox and position the plane.
+  // useLayoutEffect runs after children but before paint — no visual lag.
+  useLayoutEffect(() => {
+    if (!stlPlaneRef.current || !meshRef.current) return;
+    const box = new THREE.Box3().setFromObject(meshRef.current);
+    if (!box.isEmpty()) {
+      stlPlaneRef.current.position.y = box.min.y - 0.01;
     }
-  }, [baseSize.height, scale.y, onModelHeight]);
+  });
 
   return (
-    <mesh
-      ref={meshRef}
-      geometry={geometry}
-      scale={[scale.x, scale.y, scale.z]}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
-      castShadow
-      receiveShadow
-    >
-      <meshStandardMaterial
-        color={hovered ? '#60a5fa' : '#94a3b8'}
-        metalness={0.3}
-        roughness={0.4}
-      />
-    </mesh>
+    <group>
+      <mesh
+        ref={meshRef}
+        geometry={geometry}
+        scale={[scale.x, scale.y, scale.z]}
+        onPointerOver={() => setHovered(true)}
+        onPointerOut={() => setHovered(false)}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial
+          color={hovered ? '#60a5fa' : '#94a3b8'}
+          metalness={0.3}
+          roughness={0.4}
+        />
+      </mesh>
+      {baseSizeCm > 0 && (
+        <mesh
+          ref={stlPlaneRef}
+          rotation={[-Math.PI / 2, 0, 0]}
+          receiveShadow
+        >
+          <planeGeometry args={[baseSizeCm, baseSizeCm]} />
+          <meshStandardMaterial color="#111111" />
+        </mesh>
+      )}
+    </group>
   );
 }
 
 /**
  * GLB/GLTF Model component
  */
-function GLBModel({ url, rotation, groupRef, scale = { x: 1, y: 1, z: 1 }, onDimensions, onModelHeight }: { url: string; rotation?: { x?: number; y?: number; z?: number }; groupRef: React.RefObject<THREE.Group>; scale?: { x: number; y: number; z: number }; onDimensions?: (dims: { width: number; height: number; depth: number }, baseSize: { width: number; height: number; depth: number }) => void; onModelHeight?: (height: number) => void }) {
+function GLBModel({ url, rotation, groupRef, scale = { x: 1, y: 1, z: 1 }, onDimensions, baseSizeCm = 0 }: { url: string; rotation?: { x?: number; y?: number; z?: number }; groupRef: React.RefObject<THREE.Group>; scale?: { x: number; y: number; z: number }; onDimensions?: (dims: { width: number; height: number; depth: number }, baseSize: { width: number; height: number; depth: number }) => void; baseSizeCm?: number }) {
   // Clear cache for this URL when component mounts to ensure fresh load
   useEffect(() => {
     return () => {
@@ -103,6 +120,19 @@ function GLBModel({ url, rotation, groupRef, scale = { x: 1, y: 1, z: 1 }, onDim
   }, [url]);
 
   const { scene } = useGLTF(url);
+
+  const glbPlaneRef = useRef<THREE.Mesh>(null!);
+
+  // After every render, measure groupRef's actual world bbox and position the plane.
+  // useLayoutEffect on GLBModel fires AFTER Center's useLayoutEffect (child-before-parent order),
+  // so Center has already applied its centering translation when we measure.
+  useLayoutEffect(() => {
+    if (!glbPlaneRef.current || !groupRef.current) return;
+    const box = new THREE.Box3().setFromObject(groupRef.current);
+    if (!box.isEmpty()) {
+      glbPlaneRef.current.position.y = box.min.y - 0.01;
+    }
+  });
 
   useEffect(() => {
     if (groupRef?.current && rotation) {
@@ -128,18 +158,26 @@ function GLBModel({ url, rotation, groupRef, scale = { x: 1, y: 1, z: 1 }, onDim
         depth: size.z * scale.z,
       }, baseSize);
     }
-    
-    if (onModelHeight) {
-      onModelHeight(size.y * scale.y);
-    }
-  }, [scene, scale, onDimensions, onModelHeight]);
+  }, [scene, scale, onDimensions]);
 
   return (
-    <Center>
-      <group ref={groupRef} scale={[scale.x, scale.y, scale.z]}>
-        <primitive object={scene.clone()} />
-      </group>
-    </Center>
+    <group>
+      <Center>
+        <group ref={groupRef} scale={[scale.x, scale.y, scale.z]}>
+          <primitive object={scene.clone()} />
+        </group>
+      </Center>
+      {baseSizeCm > 0 && (
+        <mesh
+          ref={glbPlaneRef}
+          rotation={[-Math.PI / 2, 0, 0]}
+          receiveShadow
+        >
+          <planeGeometry args={[baseSizeCm, baseSizeCm]} />
+          <meshStandardMaterial color="#111111" />
+        </mesh>
+      )}
+    </group>
   );
 }
 
@@ -156,6 +194,78 @@ function BasePlane({ sizeCm, modelHeight }: { sizeCm: number; modelHeight: numbe
       <meshStandardMaterial color="#111111" />
     </mesh>
   );
+}
+
+/**
+ * Test WebGL availability before mounting a Canvas.
+ * Creates a temporary canvas, checks for a context, then immediately releases it.
+ */
+function isWebGLAvailable(): boolean {
+  try {
+    const testCanvas = document.createElement('canvas');
+    const gl =
+      testCanvas.getContext('webgl2') ||
+      testCanvas.getContext('webgl') ||
+      testCanvas.getContext('experimental-webgl');
+    if (!gl) return false;
+    const ext = (gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
+    ext?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * ErrorBoundary to catch WebGL context errors and avoid white screen
+ */
+class WebGLErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; message: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, message: error.message };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full min-h-[300px] bg-slate-900 rounded-lg flex flex-col items-center justify-center gap-3 p-6">
+          <p className="text-red-400 font-semibold text-sm">Impossibile avviare il visualizzatore 3D</p>
+          <p className="text-slate-400 text-xs text-center">WebGL non disponibile. Ricarica la pagina o riavvia il browser.</p>
+          <button
+            onClick={() => this.setState({ hasError: false, message: '' })}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+          >
+            Riprova
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/**
+ * Forces explicit WebGL context loss on unmount to free GPU resources.
+ * Prevents Chrome from hitting the ~16-context limit after repeated modal opens.
+ */
+function ContextDisposer() {
+  const { gl } = useThree();
+  useEffect(() => {
+    return () => {
+      try {
+        gl.dispose();
+        const ctx = gl.getContext() as WebGLRenderingContext | null;
+        const ext = ctx?.getExtension('WEBGL_lose_context');
+        ext?.loseContext();
+      } catch (_) {}
+    };
+  }, [gl]);
+  return null;
 }
 
 /**
@@ -176,7 +286,6 @@ function LoadingPlaceholder() {
 const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, scale = { x: 1, y: 1, z: 1 }, baseSizeCm = 0, onDimensions }: ModelViewerProps, ref) {
   const stlMeshRef = useRef<THREE.Mesh>(null!);
   const glbGroupRef = useRef<THREE.Group>(null!);
-  const [modelHeight, setModelHeight] = useState(0);
 
   useImperativeHandle(ref, () => ({
     exportSTL: async (): Promise<Blob | null> => {
@@ -363,12 +472,26 @@ const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, s
     }
   }));
 
+  if (!isWebGLAvailable()) {
+    return (
+      <div className="w-full h-full min-h-[300px] bg-slate-900 rounded-lg flex flex-col items-center justify-center gap-3 p-6">
+        <p className="text-red-400 font-semibold text-sm">WebGL non disponibile</p>
+        <p className="text-slate-400 text-xs text-center">
+          Il browser non riesce a creare un contesto 3D.<br />
+          Digita <strong className="text-white">chrome://restart</strong> nella barra dell&apos;indirizzo per riavviare Chrome.
+        </p>
+      </div>
+    );
+  }
+
   return (
+    <WebGLErrorBoundary>
     <div className="w-full h-full min-h-[300px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-lg overflow-hidden">
       <Canvas
         shadows
+        frameloop="demand"
         camera={{ position: [0, 0, 5], fov: 50 }}
-        gl={{ antialias: true, alpha: true }}
+        gl={{ antialias: true, alpha: true, failIfMajorPerformanceCaveat: false }}
       >
         <color attach="background" args={['#1e293b']} />
         
@@ -385,8 +508,6 @@ const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, s
         
         {/* Model */}
         <Suspense fallback={<LoadingPlaceholder />}>
-          {/* Black base plane - positioned below model */}
-          {baseSizeCm > 0 && <BasePlane sizeCm={baseSizeCm} modelHeight={modelHeight} />}
           <Stage
             environment="city"
             intensity={0.5}
@@ -394,13 +515,15 @@ const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, s
             shadows={{ type: 'contact', blur: 2, opacity: 0.5 }}
           >
             {fileType === 'stl' ? (
-              <STLModel url={url} rotation={rotation} meshRef={stlMeshRef} scale={scale} onDimensions={onDimensions} onModelHeight={setModelHeight} />
+              <STLModel url={url} rotation={rotation} meshRef={stlMeshRef} scale={scale} onDimensions={onDimensions} baseSizeCm={baseSizeCm} />
             ) : (
-              <GLBModel url={url} rotation={rotation} groupRef={glbGroupRef} scale={scale} onDimensions={onDimensions} onModelHeight={setModelHeight} />
+              <GLBModel url={url} rotation={rotation} groupRef={glbGroupRef} scale={scale} onDimensions={onDimensions} baseSizeCm={baseSizeCm} />
             )}
           </Stage>
         </Suspense>
         
+        <ContextDisposer />
+
         {/* Controls */}
         <OrbitControls
           makeDefault
@@ -420,6 +543,7 @@ const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, s
         </p>
       </div>
     </div>
+    </WebGLErrorBoundary>
   );
 });
 

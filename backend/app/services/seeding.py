@@ -358,13 +358,132 @@ def run_seeding(session: Session) -> None:
     print("✅ Seeding completed!")
 
 
+def restore_missing_uploads(session: Session) -> None:
+    """
+    For existing sets in the DB, check if their upload files are missing
+    and try to restore them from the seeds directory.
+    Only restores files that actually exist in seeds (skips LFS pointers).
+    """
+    seeds_dir = get_seeds_directory()
+    if not seeds_dir.exists():
+        return
+
+    sets = list(session.exec(select(ChessSet)).all())
+    if not sets:
+        return
+
+    restored_count = 0
+    skipped_lfs_count = 0
+
+    for chess_set in sets:
+        # Try to find a matching seed directory by name (case-insensitive)
+        seed_set_path = None
+        for seed_path in seeds_dir.iterdir():
+            if seed_path.is_dir() and seed_path.name.lower() == chess_set.name.lower():
+                seed_set_path = seed_path
+                break
+
+        if not seed_set_path:
+            continue
+
+        pieces = list(session.exec(
+            select(ChessPiece).where(ChessPiece.set_id == chess_set.id)
+        ).all())
+
+        for piece in pieces:
+            # Find matching seed piece folder by type prefix
+            piece_type_str = piece.type.value.lower()
+            seed_piece_path = None
+            for item in seed_set_path.iterdir():
+                if item.is_dir() and item.name.lower().startswith(piece_type_str):
+                    seed_piece_path = item
+                    break
+
+            if not seed_piece_path:
+                continue
+
+            versions = list(session.exec(
+                select(PieceVersion).where(PieceVersion.piece_id == piece.id)
+            ).all())
+
+            for version in versions:
+                # Find version folder by name
+                seed_version_path = None
+                for vfolder in seed_piece_path.iterdir():
+                    if vfolder.is_dir() and vfolder.name == version.version_name:
+                        seed_version_path = vfolder
+                        break
+
+                if not seed_version_path:
+                    continue
+
+                # Restore images
+                images_dir = seed_version_path / "images"
+                if images_dir.exists():
+                    img_mappings = {
+                        'img_front': ('front', version.img_front),
+                        'img_back': ('back', version.img_back),
+                        'img_side_l': ('left', version.img_side_l),
+                        'img_side_r': ('right', version.img_side_r),
+                    }
+                    for _attr, (keyword, db_path) in img_mappings.items():
+                        if not db_path:
+                            continue
+                        dest = UPLOAD_DIR / db_path
+                        if dest.exists():
+                            continue
+                        for img_file in images_dir.iterdir():
+                            if img_file.is_file() and keyword in img_file.name.lower():
+                                dest.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copy2(img_file, dest)
+                                restored_count += 1
+                                break
+
+                # Restore 3D models (skip LFS pointers)
+                models_dir = seed_version_path / "3d"
+                if models_dir.exists():
+                    model_mappings = {
+                        'model_glb': ('.glb', version.model_glb),
+                        'model_stl': ('.stl', version.model_stl),
+                    }
+                    for _attr, (ext, db_path) in model_mappings.items():
+                        if not db_path:
+                            continue
+                        dest = UPLOAD_DIR / db_path
+                        if dest.exists():
+                            continue
+                        for model_file in models_dir.iterdir():
+                            if model_file.is_file() and model_file.suffix.lower() == ext:
+                                # Check if it's an LFS pointer
+                                try:
+                                    header = model_file.read_bytes()[:20]
+                                    if header.startswith(b'version https://git-'):
+                                        skipped_lfs_count += 1
+                                        break
+                                except Exception:
+                                    break
+                                dest.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copy2(model_file, dest)
+                                restored_count += 1
+                                break
+
+    if restored_count > 0:
+        print(f"  ✅ Restored {restored_count} missing upload file(s) from seeds")
+    if skipped_lfs_count > 0:
+        print(f"  ⚠️  Skipped {skipped_lfs_count} LFS pointer file(s) - run 'git lfs pull' to get 3D models")
+
+
 def seed_if_needed(session: Session) -> None:
     """
     Check if seeding is needed and run it.
-    This is the main entry point called from main.py.
+    Always checks for missing uploads and restores them from seeds if possible.
     """
     if should_run_seeding(session):
         print("📭 Database is empty, running seeding...")
         run_seeding(session)
     else:
         print("📬 Database already has data, skipping seeding")
+
+    print("🔍 Checking for missing upload files...")
+    restore_missing_uploads(session)
+

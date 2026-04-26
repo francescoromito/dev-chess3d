@@ -464,6 +464,7 @@ export default function PieceDetail() {
                       src={getFileUrl(version.model_glb) || ''}
                       label="Modello GLB"
                       fileType="glb"
+                      versionId={version.id}
                       onEdit={(file) => handleFileChange(version.id, 'model_glb', file)}
                       onRemove={() => { if (confirm('Rimuovere modello GLB?')) deleteFileMutation.mutate({ versionId: version.id, field: 'model_glb' }); }}
                       pieceType={piece?.type?.toLowerCase()}
@@ -471,18 +472,7 @@ export default function PieceDetail() {
                   ) : (
                     <ModelPlaceholder label="GLB" onUpload={(file) => handleFileChange(version.id, 'model_glb', file)} accept=".glb,.gltf" />
                   )}
-                  {version.model_stl ? (
-                    <ModelCard
-                      src={getFileUrl(version.model_stl) || ''}
-                      label="Modello STL"
-                      fileType="stl"
-                      onEdit={(file) => handleFileChange(version.id, 'model_stl', file)}
-                      onRemove={() => { if (confirm('Rimuovere modello STL?')) deleteFileMutation.mutate({ versionId: version.id, field: 'model_stl' }); }}
-                      pieceType={piece?.type?.toLowerCase()}
-                    />
-                  ) : (
-                    <ModelPlaceholder label="STL" onUpload={(file) => handleFileChange(version.id, 'model_stl', file)} accept=".stl" />
-                  )}
+
                 </div>
               </div>
             </div>

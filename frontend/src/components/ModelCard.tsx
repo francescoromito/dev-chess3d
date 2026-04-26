@@ -6,6 +6,7 @@ import { useState, useRef, Suspense, useEffect } from 'react';
 import { X, Download, Edit2, Box, Loader2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import ModelViewer from './ModelViewer';
 import sizePresets from '../config/sizePresets.json';
+import { piecesApi } from '../services/api';
 
 interface ModelCardProps {
   src: string;
@@ -14,9 +15,10 @@ interface ModelCardProps {
   onEdit?: (file: File) => void;
   onRemove?: () => void;
   pieceType?: string; // e.g. "king", "queen", "knight", etc.
+  versionId?: number; // used for backend STL conversion
 }
 
-export default function ModelCard({ src, label, fileType, onEdit, onRemove, pieceType }: ModelCardProps) {
+export default function ModelCard({ src, label, fileType, onEdit, onRemove, pieceType, versionId }: ModelCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [rotation, setRotation] = useState({ x: 0, y: 0, z: 0 });
@@ -24,6 +26,7 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
   const viewerRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [downloadLoading, setDownloadLoading] = useState(false);
+  const [showFormatPicker, setShowFormatPicker] = useState(false);
   // Scale and base plane controls
   const [modelScale, setModelScale] = useState({ x: 1, y: 1, z: 1 });
   const [baseSizeCm, setBaseSizeCm] = useState(sizePresets.presets.small.baseSizeCm);
@@ -31,7 +34,10 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
   const [baseSize, setBaseSize] = useState<{ width: number; height: number; depth: number } | null>(null);
   const [lockProportions, setLockProportions] = useState(true);
   const [expandControls, setExpandControls] = useState(false);
-  const [activePreset, setActivePreset] = useState<'small' | 'medium' | 'large'>('small');
+  const [activePreset, setActivePreset] = useState<'small' | 'medium' | 'large' | 'current'>('current');
+  // Snapshot captured when the modal opens — used by "Attuale" button
+  const initialScaleRef = useRef({ x: 1, y: 1, z: 1 });
+  const initialBaseSizeCmRef = useRef(sizePresets.presets.small.baseSizeCm);
 
   // Get default height for this piece type from a specific preset
   const getDefaultHeight = (preset: 'small' | 'medium' | 'large') => {
@@ -74,14 +80,27 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
     }
   };
 
-  // Hide loading after model is likely loaded
+  // Hide loading after model is likely loaded + capture initial state for "Attuale"
   useEffect(() => {
     if (isOpen) {
+      // Snapshot the current state so "Attuale" can restore it
+      initialScaleRef.current = { ...modelScale };
+      initialBaseSizeCmRef.current = baseSizeCm;
+      setActivePreset('current');
       setIsLoading(true);
       const timer = setTimeout(() => setIsLoading(false), 2000);
       return () => clearTimeout(timer);
+    } else {
+      setShowFormatPicker(false);
     }
-  }, [isOpen]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Restore to the state captured when the modal was opened
+  const applyCurrentPreset = () => {
+    setModelScale({ ...initialScaleRef.current });
+    setBaseSizeCm(initialBaseSizeCmRef.current);
+    setActivePreset('current');
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -216,59 +235,90 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
                     </button>
                   </>
                 )}
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    if (downloadLoading) return;
-                    try {
-                      setDownloadLoading(true);
-                      // If STL and viewerRef supports export with extra rotation, use it
-                      if (fileType === 'stl' && viewerRef?.current?.exportSTLWithRotation) {
-                        // apply +90deg on X for the downloaded file
-                        const blob: Blob | null = await viewerRef.current.exportSTLWithRotation({ x: 90 });
-                        if (!blob) throw new Error('Export fallito');
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        const safeLabel = label.replace(/[^a-z0-9\-_.]/gi, '_');
-                        a.download = `${safeLabel}.stl`;
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        window.URL.revokeObjectURL(url);
-                      } else {
-                        // fallback: simple fetch/download
-                        const res = await fetch(src);
-                        if (!res.ok) throw new Error('Network response was not ok');
-                        const blob = await res.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        // suggest a filename
-                        const ext = fileType === 'stl' ? '.stl' : '.glb';
-                        const safeLabel = label.replace(/[^a-z0-9\-_.]/gi, '_');
-                        a.download = `${safeLabel}${ext}`;
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        window.URL.revokeObjectURL(url);
-                      }
-                    } catch (err) {
-                      alert('Errore durante il download del file');
-                    } finally {
-                      setDownloadLoading(false);
-                    }
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  {downloadLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4" />
+                {/* Download button with GLB/STL format picker */}
+                <div className="relative" onMouseDown={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!downloadLoading) setShowFormatPicker((v) => !v);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                  >
+                    {downloadLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    {downloadLoading ? 'Scaricamento...' : 'Scarica'}
+                    {!downloadLoading && <ChevronDown className="w-3 h-3" />}
+                  </button>
+
+                  {showFormatPicker && !downloadLoading && (
+                    <div
+                      className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden min-w-[110px]"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      {/* GLB download */}
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-blue-50 transition-colors"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setShowFormatPicker(false);
+                          try {
+                            setDownloadLoading(true);
+                            const res = await fetch(src);
+                            if (!res.ok) throw new Error('Network response was not ok');
+                            const blob = await res.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            const safeLabel = label.replace(/[^a-z0-9\-_.]/gi, '_');
+                            a.download = `${safeLabel}.glb`;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            window.URL.revokeObjectURL(url);
+                          } catch {
+                            alert('Errore durante il download GLB');
+                          } finally {
+                            setDownloadLoading(false);
+                          }
+                        }}
+                      >
+                        Scarica GLB
+                      </button>
+
+                      {/* STL download — only if versionId is available */}
+                      {versionId != null && (
+                        <button
+                          className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-blue-50 transition-colors border-t border-gray-100"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            setShowFormatPicker(false);
+                            try {
+                              setDownloadLoading(true);
+                              const { blob, filename } = await piecesApi.downloadVersionAsStl(versionId);
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = filename;
+                              document.body.appendChild(a);
+                              a.click();
+                              a.remove();
+                              window.URL.revokeObjectURL(url);
+                            } catch {
+                              alert('Errore durante la conversione STL');
+                            } finally {
+                              setDownloadLoading(false);
+                            }
+                          }}
+                        >
+                          Scarica STL
+                        </button>
+                      )}
+                    </div>
                   )}
-                  {downloadLoading ? 'Scaricamento...' : 'Scarica'}
-                </button>
+                </div>
                 <button
                   onClick={() => setIsOpen(false)}
                   className="p-2 text-white/70 hover:text-white transition-colors"
@@ -305,12 +355,22 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
                 <div className="w-80 p-4 pt-16 bg-slate-800 border-l border-slate-700 overflow-y-auto">
                   {/* Size Presets Buttons */}
                   <h4 className="text-sm text-white mb-2">Dimensioni</h4>
-                  <div className="flex gap-2 mb-4">
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <button
+                      onClick={applyCurrentPreset}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        activePreset === 'current'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      Attuale
+                    </button>
                     {(Object.keys(sizePresets.presets) as Array<'small' | 'medium' | 'large'>).map((preset) => (
                       <button
                         key={preset}
                         onClick={() => applyPreset(preset)}
-                        className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                           activePreset === preset
                             ? 'bg-blue-600 text-white'
                             : 'bg-slate-700 text-slate-300 hover:bg-slate-600'

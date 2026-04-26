@@ -346,6 +346,24 @@ export const piecesApi = {
   },
 
   /**
+   * Download a version's GLB converted to STL by the backend (preserves GLB dimensions).
+   * Returns the STL as a Blob plus the suggested filename from the server.
+   */
+  downloadVersionAsStl: async (versionId: number): Promise<{ blob: Blob; filename: string }> => {
+    const response = await api.get(`/pieces/versions/${versionId}/download-as-stl`, {
+      responseType: 'blob',
+    });
+    const cd: string | undefined =
+      response.headers?.['content-disposition'] || response.headers?.['Content-Disposition'];
+    let filename = 'model.stl';
+    if (cd) {
+      const match = cd.match(/filename\*?=(?:UTF-8''")?"?([^";]+)"?/i);
+      if (match) filename = decodeURIComponent(match[1]);
+    }
+    return { blob: response.data as Blob, filename };
+  },
+
+  /**
    * Update a chess piece (name/description)
    */
   updatePiece: async (pieceId: number, data: { name?: string; description?: string }): Promise<ChessPieceWithVersions> => {

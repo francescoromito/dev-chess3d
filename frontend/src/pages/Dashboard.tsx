@@ -91,6 +91,21 @@ const getFavoriteVersion = (versions: any[] | undefined) => {
   return favorite || versions[0];
 };
 
+function PieceThumbnail({ imageSrc, pieceType }: { imageSrc: string | null; pieceType: string }) {
+  const [hasError, setHasError] = useState(false);
+  if (!imageSrc || hasError) {
+    return <ChessPieceIcon type={pieceType} className="w-6 h-6" />;
+  }
+  return (
+    <img
+      src={imageSrc}
+      alt={pieceType}
+      className="w-full h-full object-contain"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -347,11 +362,7 @@ export default function Dashboard() {
 
                       return (
                         <div key={piece.id} className="aspect-square bg-white rounded border border-gray-200 overflow-hidden flex items-center justify-center relative group">
-                          {imageSrc ? (
-                            <img src={imageSrc} alt={piece.type} className="w-full h-full object-contain" />
-                          ) : (
-                            <ChessPieceIcon type={piece.type} className="w-6 h-6" />
-                          )}
+                          <PieceThumbnail imageSrc={imageSrc} pieceType={piece.type} />
 
                           <div className="absolute bottom-1 right-1">
                             {isComplete ? (
