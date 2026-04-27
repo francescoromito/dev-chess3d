@@ -7,8 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, Image, Box, Star, CheckCircle, Upload, Download, Sparkles } from 'lucide-react';
 import { piecesApi, getFileUrl } from '../services/api';
-import type { CreateVersionRequest, PieceVersion } from '../types';
-import CreateVersionModal from '../components/CreateVersionModal';
+import type { PieceVersion } from '../types';
 import EditEntityModal from '../components/EditEntityModal';
 import ImageCard from '../components/ImageCard';
 import ModelCard from '../components/ModelCard';
@@ -20,9 +19,12 @@ export default function PieceDetail() {
   const { pieceId } = useParams<{ pieceId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editVersionId, setEditVersionId] = useState<number | null>(null);
   const [aiStudioVersion, setAiStudioVersion] = useState<PieceVersion | null>(null);
+  const [showNewVersionDialog, setShowNewVersionDialog] = useState(false);
+  const [newVersionName, setNewVersionName] = useState('');
+  const [isCreatingVersion, setIsCreatingVersion] = useState(false);
+  const [newVersionError, setNewVersionError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [isImporting, setIsImporting] = useState(false);
@@ -50,18 +52,33 @@ export default function PieceDetail() {
     enabled: !!pieceId,
   });
 
-  const createVersionMutation = useMutation({
-    mutationFn: (data: CreateVersionRequest) =>
-      piecesApi.createVersion(Number(pieceId), data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['piece', pieceId] });
-      setIsModalOpen(false);
-    },
-  });
+  const handleOpenAIStudio = () => {
+    if (sortedVersions && sortedVersions.length > 0) {
+      setAiStudioVersion(sortedVersions[0]);
+    } else {
+      setNewVersionName('');
+      setNewVersionError(null);
+      setShowNewVersionDialog(true);
+    }
+  };
 
-  const handleCreateVersionSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['piece', pieceId] });
-    setIsModalOpen(false);
+  const handleCreateAndOpenAIStudio = async () => {
+    if (!newVersionName.trim()) {
+      setNewVersionError('Inserisci un nome per la versione');
+      return;
+    }
+    setIsCreatingVersion(true);
+    setNewVersionError(null);
+    try {
+      const version = await piecesApi.createVersion(Number(pieceId), { version_name: newVersionName.trim() });
+      queryClient.invalidateQueries({ queryKey: ['piece', pieceId] });
+      setShowNewVersionDialog(false);
+      setAiStudioVersion(version);
+    } catch (e: any) {
+      setNewVersionError(e?.response?.data?.detail ?? 'Errore durante la creazione');
+    } finally {
+      setIsCreatingVersion(false);
+    }
   };
 
   const updateVersionMutation = useMutation({
@@ -175,10 +192,6 @@ export default function PieceDetail() {
     }
   };
 
-  const handleCreateVersion = (data: CreateVersionRequest) => {
-    createVersionMutation.mutate(data);
-  };
-
   const handleFileChange = (versionId: number, fieldName: string, file: File) => {
     updateVersionMutation.mutate({ 
       versionId, 
@@ -258,21 +271,12 @@ export default function PieceDetail() {
 
       <div className="mb-6 flex gap-2 flex-wrap">
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenAIStudio}
           className="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors shadow-sm"
         >
           <Sparkles className="w-5 h-5 mr-2" />
-          Crea con AI
+          AI Studio
         </button>
-        {sortedVersions && sortedVersions.length > 0 && (
-          <button
-            onClick={() => setAiStudioVersion(sortedVersions[0])}
-            className="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
-          >
-            <Sparkles className="w-5 h-5 mr-2" />
-            AI Studio
-          </button>
-        )}
         <input
           ref={importInputRef}
           type="file"
@@ -504,22 +508,52 @@ export default function PieceDetail() {
           <p className="text-gray-700 font-semibold text-lg mb-1">Nessuna versione ancora</p>
           <p className="text-gray-400 text-sm mb-6">Usa l'AI per dare vita a questo pezzo — immagina lo stile e genera l'immagine in un click</p>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenAIStudio}
             className="inline-flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold transition-colors shadow-md"
           >
             <Sparkles className="w-5 h-5" />
-            Crea con AI
+            AI Studio
           </button>
         </div>
       )}
 
-      <CreateVersionModal
-        isOpen={isModalOpen}
-        pieceId={Number(pieceId)}
-        pieceType={piece?.type ?? 'piece'}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleCreateVersionSuccess}
-      />
+      {showNewVersionDialog && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-violet-600" />
+              Nuova versione
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">Dai un nome alla versione, poi si apre AI Studio.</p>
+            <input
+              type="text"
+              value={newVersionName}
+              onChange={(e) => setNewVersionName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 mb-3"
+              placeholder="es. Stile medievale"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateAndOpenAIStudio(); }}
+            />
+            {newVersionError && <p className="text-red-500 text-sm mb-3">{newVersionError}</p>}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowNewVersionDialog(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleCreateAndOpenAIStudio}
+                disabled={isCreatingVersion || !newVersionName.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Sparkles className="w-4 h-4" />
+                {isCreatingVersion ? 'Creando...' : 'Crea e apri AI Studio'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {aiStudioVersion && piece && (
         <AIStudioModal
           isOpen={!!aiStudioVersion}
