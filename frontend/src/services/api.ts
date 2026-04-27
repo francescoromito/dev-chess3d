@@ -8,6 +8,9 @@ import type {
   PieceVersion,
   CreateChessSetRequest,
   CreateVersionRequest,
+  StagedFile,
+  AIJob,
+  SlotField,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -460,4 +463,102 @@ export const getFileUrl = (relativePath: string | null): string | null => {
   if (!relativePath) return null;
   // Add timestamp to prevent caching issues when file is updated
   return `${API_BASE_URL}/uploads/${relativePath}?t=${Date.now()}`;
+};
+
+// ---------------------------------------------------------------------------
+// AI Generation API
+// ---------------------------------------------------------------------------
+
+export const aiApi = {
+  /**
+   * Generate an image from a text prompt (text → image).
+   * Returns a StagedFile with a preview URL.
+   */
+  generateImage: async (params: {
+    prompt: string;
+    style_preset?: string;
+    piece_type?: string;
+  }): Promise<StagedFile> => {
+    const response = await api.post<StagedFile>('/ai/generate-image', params);
+    return response.data;
+  },
+
+  /**
+   * Edit/refine an image using a new prompt (img2img).
+   * Provide either staged_id (in-flight staged image) or source_url (already-saved URL).
+   */
+  editImage: async (params: {
+    prompt: string;
+    staged_id?: string;
+    source_url?: string;
+  }): Promise<StagedFile> => {
+    const response = await api.post<StagedFile>('/ai/edit-image', params);
+    return response.data;
+  },
+
+  /**
+   * Send an annotated/drawn-upon image + prompt to the AI for editing.
+   * The imageBlob should be a PNG composite of the base image + user drawings.
+   */
+  annotatedEdit: async (imageBlob: Blob, prompt: string): Promise<StagedFile> => {
+    const formData = new FormData();
+    formData.append('image', imageBlob, 'annotation.png');
+    formData.append('prompt', prompt);
+    const response = await api.post<StagedFile>('/ai/annotated-edit', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  /**
+   * Generate a rotated view (back / left / right) from a reference image.
+   * Provide either a staged_id (in-progress front image) or a source_url (saved URL).
+   */
+  generateView: async (params: {
+    angle: 'back' | 'left' | 'right';
+    staged_id?: string;
+    source_url?: string;
+  }): Promise<StagedFile> => {
+    const response = await api.post<StagedFile>('/ai/generate-view', params);
+    return response.data;
+  },
+
+  /**
+   * Start an async 3D model generation job from 1–4 reference image URLs.
+   * Returns a job_id — poll with pollJob() until status === 'completed'.
+   */
+  generate3D: async (image_urls: string[]): Promise<{ job_id: string; status: string }> => {
+    const response = await api.post<{ job_id: string; status: string }>('/ai/generate-3d', { image_urls });
+    return response.data;
+  },
+
+  /**
+   * Poll the status of an async generation job (e.g. 3D model generation).
+   */
+  pollJob: async (job_id: string): Promise<AIJob> => {
+    const response = await api.get<AIJob>(`/ai/jobs/${job_id}`);
+    return response.data;
+  },
+
+  /**
+   * Confirm a staged file: download and persist it into the specified version slot.
+   */
+  confirmStaged: async (
+    staged_id: string,
+    version_id: number,
+    field_name: SlotField,
+  ): Promise<PieceVersion> => {
+    const response = await api.post<PieceVersion>(`/ai/confirm/${staged_id}`, {
+      version_id,
+      field_name,
+    });
+    return response.data;
+  },
+
+  /**
+   * Discard a staged file without saving.
+   */
+  discardStaged: async (staged_id: string): Promise<void> => {
+    await api.delete(`/ai/staged/${staged_id}`);
+  },
 };

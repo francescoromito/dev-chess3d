@@ -3,7 +3,7 @@
  * Displays an image as a clickable card that opens in a modal with edit option
  */
 import { useState, useRef } from 'react';
-import { X, ZoomIn, Edit, Trash2 } from 'lucide-react';
+import { X, ZoomIn, Edit, Trash2, Sparkles } from 'lucide-react';
 
 interface ImageCardProps {
   src: string;
@@ -12,9 +12,10 @@ interface ImageCardProps {
   fieldName: string;
   onImageChange?: (fieldName: string, file: File) => void;
   onRemove?: () => void;
+  onAIEdit?: () => void;
 }
 
-export default function ImageCard({ src, alt, label, fieldName, onImageChange, onRemove }: ImageCardProps) {
+export default function ImageCard({ src, alt, label, fieldName, onImageChange, onRemove, onAIEdit }: ImageCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,15 +95,26 @@ export default function ImageCard({ src, alt, label, fieldName, onImageChange, o
               {/* Header with label and edit button */}
               <div className="p-3 bg-gray-100 border-b flex items-center justify-between">
                 <p className="text-sm font-medium text-gray-700">{label}</p>
-                {onImageChange && (
-                  <button
-                    onClick={handleEditClick}
-                    className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Edit className="w-4 h-4 mr-1.5" />
-                    Cambia immagine
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {onAIEdit && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setIsOpen(false); onAIEdit(); }}
+                      className="inline-flex items-center px-3 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 transition-colors"
+                    >
+                      <Sparkles className="w-4 h-4 mr-1.5" />
+                      Modifica con AI
+                    </button>
+                  )}
+                  {onImageChange && (
+                    <button
+                      onClick={handleEditClick}
+                      className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Edit className="w-4 h-4 mr-1.5" />
+                      Cambia immagine
+                    </button>
+                  )}
+                </div>
               </div>
               
               {/* Image container */}

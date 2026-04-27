@@ -79,3 +79,50 @@ export interface CreateCollectionRequest {
   name: string;
   description?: string;
 }
+
+// ---------------------------------------------------------------------------
+// AI Generation types
+// ---------------------------------------------------------------------------
+
+export type ImageSlotField = 'img_front' | 'img_back' | 'img_side_r' | 'img_side_l';
+export type ModelSlotField = 'model_glb' | 'model_stl';
+export type SlotField = ImageSlotField | ModelSlotField;
+
+export const SLOT_LABELS: Record<SlotField, string> = {
+  img_front: 'Fronte',
+  img_back: 'Retro',
+  img_side_r: 'Destra',
+  img_side_l: 'Sinistra',
+  model_glb: 'Modello GLB',
+  model_stl: 'Modello STL',
+};
+
+export interface StagedFile {
+  id: string;
+  preview_url: string;
+}
+
+export type AIJobStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface AIJob {
+  id: string;
+  status: AIJobStatus;
+  output_url: string | null;
+  staged_id?: string | null;
+}
+
+export interface StylePreset {
+  id: string;
+  label: string;
+  emoji: string;
+  promptSuffix: string;
+}
+
+export const STYLE_PRESETS: StylePreset[] = [
+  { id: 'wood',     label: 'Wood',     emoji: '🪵', promptSuffix: 'carved wooden chess piece, wood grain texture, warm brown tones, studio lighting' },
+  { id: 'marble',   label: 'Marble',   emoji: '🤍', promptSuffix: 'white marble chess piece, polished smooth stone, classical sculpture style, soft lighting' },
+  { id: 'stone',    label: 'Stone',    emoji: '🪨', promptSuffix: 'rough grey stone chess piece, aged texture, medieval style, dramatic lighting' },
+  { id: 'gold',     label: 'Gold',     emoji: '✨', promptSuffix: 'golden chess piece, shiny polished metal, ornate decoration, luxury feel' },
+  { id: 'crystal',  label: 'Crystal',  emoji: '💎', promptSuffix: 'crystal glass chess piece, transparent with light refractions, elegant and delicate' },
+  { id: 'obsidian', label: 'Obsidian', emoji: '⬛', promptSuffix: 'obsidian dark chess piece, glossy volcanic stone, dramatic dark atmosphere' },
+];

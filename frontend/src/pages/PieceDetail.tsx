@@ -5,15 +5,16 @@
 import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Image, Box, Star, CheckCircle, Upload, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Image, Box, Star, CheckCircle, Upload, Download, Sparkles } from 'lucide-react';
 import { piecesApi, getFileUrl } from '../services/api';
-import type { CreateVersionRequest } from '../types';
+import type { CreateVersionRequest, PieceVersion } from '../types';
 import CreateVersionModal from '../components/CreateVersionModal';
 import EditEntityModal from '../components/EditEntityModal';
 import ImageCard from '../components/ImageCard';
 import ModelCard from '../components/ModelCard';
 import ImagePlaceholder from '../components/ImagePlaceholder';
 import ModelPlaceholder from '../components/ModelPlaceholder';
+import AIStudioModal from '../components/AIStudioModal';
 
 export default function PieceDetail() {
   const { pieceId } = useParams<{ pieceId: string }>();
@@ -21,6 +22,7 @@ export default function PieceDetail() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editVersionId, setEditVersionId] = useState<number | null>(null);
+  const [aiStudioVersion, setAiStudioVersion] = useState<PieceVersion | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [isImporting, setIsImporting] = useState(false);
@@ -56,6 +58,11 @@ export default function PieceDetail() {
       setIsModalOpen(false);
     },
   });
+
+  const handleCreateVersionSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['piece', pieceId] });
+    setIsModalOpen(false);
+  };
 
   const updateVersionMutation = useMutation({
     mutationFn: ({ versionId, data }: { versionId: number; data: { [key: string]: File } }) => {
@@ -252,11 +259,20 @@ export default function PieceDetail() {
       <div className="mb-6 flex gap-2 flex-wrap">
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors shadow-sm"
         >
-          <Plus className="w-5 h-5 mr-2" />
-          Nuova Versione
+          <Sparkles className="w-5 h-5 mr-2" />
+          Crea con AI
         </button>
+        {sortedVersions && sortedVersions.length > 0 && (
+          <button
+            onClick={() => setAiStudioVersion(sortedVersions[0])}
+            className="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+          >
+            <Sparkles className="w-5 h-5 mr-2" />
+            AI Studio
+          </button>
+        )}
         <input
           ref={importInputRef}
           type="file"
@@ -409,9 +425,10 @@ export default function PieceDetail() {
                       fieldName="img_front"
                       onImageChange={(field, file) => handleFileChange(version.id, field, file)}
                       onRemove={() => { if (confirm('Rimuovere immagine Fronte?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_front' }); }}
+                      onAIEdit={() => setAiStudioVersion(version)}
                     />
                   ) : (
-                    <ImagePlaceholder label="Fronte" onUpload={(file) => handleFileChange(version.id, 'img_front', file)} accept="image/*" />
+                    <ImagePlaceholder label="Fronte" onUpload={(file) => handleFileChange(version.id, 'img_front', file)} accept="image/*" onAIGenerate={() => setAiStudioVersion(version)} />
                   )}
                   {version.img_back ? (
                     <ImageCard
@@ -421,9 +438,10 @@ export default function PieceDetail() {
                       fieldName="img_back"
                       onImageChange={(field, file) => handleFileChange(version.id, field, file)}
                       onRemove={() => { if (confirm('Rimuovere immagine Retro?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_back' }); }}
+                      onAIEdit={() => setAiStudioVersion(version)}
                     />
                   ) : (
-                    <ImagePlaceholder label="Retro" onUpload={(file) => handleFileChange(version.id, 'img_back', file)} accept="image/*" />
+                    <ImagePlaceholder label="Retro" onUpload={(file) => handleFileChange(version.id, 'img_back', file)} accept="image/*" onAIGenerate={() => setAiStudioVersion(version)} />
                   )}
                   {version.img_side_r ? (
                     <ImageCard
@@ -433,9 +451,10 @@ export default function PieceDetail() {
                       fieldName="img_side_r"
                       onImageChange={(field, file) => handleFileChange(version.id, field, file)}
                       onRemove={() => { if (confirm('Rimuovere immagine Destra?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_side_r' }); }}
+                      onAIEdit={() => setAiStudioVersion(version)}
                     />
                   ) : (
-                    <ImagePlaceholder label="Destra" onUpload={(file) => handleFileChange(version.id, 'img_side_r', file)} accept="image/*" />
+                    <ImagePlaceholder label="Destra" onUpload={(file) => handleFileChange(version.id, 'img_side_r', file)} accept="image/*" onAIGenerate={() => setAiStudioVersion(version)} />
                   )}
                   {version.img_side_l ? (
                     <ImageCard
@@ -445,9 +464,10 @@ export default function PieceDetail() {
                       fieldName="img_side_l"
                       onImageChange={(field, file) => handleFileChange(version.id, field, file)}
                       onRemove={() => { if (confirm('Rimuovere immagine Sinistra?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_side_l' }); }}
+                      onAIEdit={() => setAiStudioVersion(version)}
                     />
                   ) : (
-                    <ImagePlaceholder label="Sinistra" onUpload={(file) => handleFileChange(version.id, 'img_side_l', file)} accept="image/*" />
+                    <ImagePlaceholder label="Sinistra" onUpload={(file) => handleFileChange(version.id, 'img_side_l', file)} accept="image/*" onAIGenerate={() => setAiStudioVersion(version)} />
                   )}
                 </div>
               </div>
@@ -479,19 +499,35 @@ export default function PieceDetail() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <p className="text-gray-500">
-            Nessuna versione ancora. Crea la prima versione per questo pezzo.
-          </p>
+        <div className="text-center py-16 bg-gradient-to-b from-violet-50 to-white rounded-2xl border-2 border-dashed border-violet-200">
+          <Sparkles className="w-12 h-12 text-violet-300 mx-auto mb-4" />
+          <p className="text-gray-700 font-semibold text-lg mb-1">Nessuna versione ancora</p>
+          <p className="text-gray-400 text-sm mb-6">Usa l'AI per dare vita a questo pezzo — immagina lo stile e genera l'immagine in un click</p>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold transition-colors shadow-md"
+          >
+            <Sparkles className="w-5 h-5" />
+            Crea con AI
+          </button>
         </div>
       )}
 
       <CreateVersionModal
         isOpen={isModalOpen}
+        pieceId={Number(pieceId)}
+        pieceType={piece?.type ?? 'piece'}
         onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateVersion}
-        isLoading={createVersionMutation.isPending}
+        onSuccess={handleCreateVersionSuccess}
       />
+      {aiStudioVersion && piece && (
+        <AIStudioModal
+          isOpen={!!aiStudioVersion}
+          onClose={() => setAiStudioVersion(null)}
+          piece={piece}
+          version={aiStudioVersion}
+        />
+      )}
       {editVersionId && sortedVersions && sortedVersions.length > 0 && (
         <EditEntityModal
           isOpen={!!editVersionId}
