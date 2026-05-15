@@ -7,7 +7,7 @@ import type { MouseEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Upload, Calendar, Swords, Loader2, Box } from 'lucide-react';
-import { chessSetsApi, collectionsApi, getFileUrl } from '../services/api';
+import { chessSetsApi, collectionsApi, adminApi, getFileUrl } from '../services/api';
 import CreateCollectionModal from '../components/CreateCollectionModal';
 import CollectionDetailModal from '../components/CollectionDetailModal';
 import { ChessPieceIcon } from '../components/ChessPieceIcon';
@@ -84,6 +84,85 @@ function CollectionCard({ col, onOpen, onRefresh }: { col: any; onOpen: () => vo
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// Set card component with delete button
+function SetCard({ set, onDelete, onNavigate }: { set: any; onDelete: () => void; onNavigate: () => void }) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Sei sicuro di voler eliminare la scacchiera "${set.name}"?`)) return;
+    setIsDeleting(true);
+    try {
+      await chessSetsApi.delete(set.id);
+      onDelete();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="group bg-white rounded-2xl shadow-sm border-2 border-slate-100 hover:shadow-lg hover:border-violet-300 transition-all text-left overflow-hidden flex flex-col hover:-translate-y-1 relative">
+      {!set.is_seeded && (
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-white/80 text-slate-400 hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100"
+          title="Elimina scacchiera"
+          onMouseDown={e => e.stopPropagation()}
+        >
+          {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrashIcon className="w-4 h-4" />}
+        </button>
+      )}
+      <div onClick={onNavigate} className="p-6 border-b border-slate-100 flex flex-col min-h-[140px] cursor-pointer">
+        <h3 className="text-xl font-bold text-slate-900 group-hover:text-violet-600 mb-2 transition-colors line-clamp-1">{set.name}</h3>
+        <p className="text-slate-500 text-sm line-clamp-2 min-h-[40px]">
+          {set.description || <span className="opacity-0">-</span>}
+        </p>
+        <div className="flex items-center text-sm text-slate-400 mt-auto pt-2"><Calendar className="w-4 h-4 mr-1" />{new Date(set.created_at).toLocaleDateString('it-IT')}</div>
+      </div>
+
+      <div className="p-4 grid grid-cols-3 grid-rows-2 gap-3 flex-grow bg-slate-50/50 cursor-pointer" onClick={onNavigate}>
+        {set.pieces.map((piece: any) => {
+          const favoriteVersion = getFavoriteVersion(piece.versions);
+          const imageSrc = favoriteVersion?.img_front ? getFileUrl(favoriteVersion.img_front) : null;
+          const completionPercentage = favoriteVersion?.completion_percentage || 0;
+          const isComplete = favoriteVersion?.is_complete || false;
+          const has3DModel = !!favoriteVersion?.model_glb;
+
+          return (
+            <div key={piece.id} className="aspect-square bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex items-center justify-center relative group-hover:border-violet-200 transition-colors">
+              <PieceThumbnail imageSrc={imageSrc} pieceType={piece.type} />
+
+              {has3DModel && (
+                <div className="absolute top-1.5 left-1.5 flex items-center justify-center pointer-events-none" title="Modello 3D pronto">
+                  <Box className="w-4 h-4 text-violet-400 drop-shadow-sm group-hover:text-violet-500 transition-colors" strokeWidth={2.5} />
+                </div>
+              )}
+
+              <div className="absolute bottom-1 right-1">
+                {isComplete ? (
+                  <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shadow-sm">
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  </div>
+                ) : (
+                  <svg className="w-8 h-8" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="35" fill="white" />
+                    <circle cx="50" cy="50" r="35" fill="none" stroke="#f1f5f9" strokeWidth="12" />
+                    <circle cx="50" cy="50" r="35" fill="none" stroke={completionPercentage > 50 ? "#8b5cf6" : "#c4b5fd"} strokeWidth="12" strokeDasharray={`${2 * Math.PI * 35}`} strokeDashoffset={`${2 * Math.PI * 35 * (1 - completionPercentage / 100)}`} strokeLinecap="round" style={{ transform: 'rotate(-90deg)', transformOrigin: '50px 50px', transition: 'stroke-dashoffset 0.3s ease' }} />
+                  </svg>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
     </div>
   );
 }
@@ -269,9 +348,11 @@ export default function Dashboard() {
           <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Le tue Scacchiere</h2>
           <p className="mt-2 text-slate-500 font-medium">Gestisci i design delle tue scacchiere e i modelli 3D</p>
         </div>
-        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-          <button onClick={() => setActiveTab('sets')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'sets' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Scacchiere</button>
-          <button onClick={() => setActiveTab('collections')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'collections' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Collezioni</button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+            <button onClick={() => setActiveTab('sets')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'sets' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Scacchiere</button>
+            <button onClick={() => setActiveTab('collections')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'collections' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Collezioni</button>
+          </div>
         </div>
       </div>
 
@@ -346,55 +427,12 @@ export default function Dashboard() {
               </>
             ) : (
               sets?.map((set) => (
-                <button
+                <SetCard
                   key={set.id}
-                  onClick={() => navigate(`/sets/${set.id}`)}
-                  className="group bg-white rounded-2xl shadow-sm border-2 border-slate-100 hover:shadow-lg hover:border-violet-300 transition-all text-left overflow-hidden flex flex-col hover:-translate-y-1"
-                >
-                  <div className="p-6 border-b border-slate-100 flex flex-col min-h-[140px]">
-                    <h3 className="text-xl font-bold text-slate-900 group-hover:text-violet-600 mb-2 transition-colors line-clamp-1">{set.name}</h3>
-                    <p className="text-slate-500 text-sm line-clamp-2 min-h-[40px]">
-                      {set.description || <span className="opacity-0">-</span>}
-                    </p>
-                    <div className="flex items-center text-sm text-slate-400 mt-auto pt-2"><Calendar className="w-4 h-4 mr-1" />{new Date(set.created_at).toLocaleDateString('it-IT')}</div>
-                  </div>
-
-                  <div className="p-4 grid grid-cols-3 grid-rows-2 gap-3 flex-grow bg-slate-50/50">
-                    {set.pieces.map((piece) => {
-                      const favoriteVersion = getFavoriteVersion(piece.versions);
-                      const imageSrc = favoriteVersion?.img_front ? getFileUrl(favoriteVersion.img_front) : null;
-                      const completionPercentage = favoriteVersion?.completion_percentage || 0;
-                      const isComplete = favoriteVersion?.is_complete || false;
-                      const has3DModel = !!favoriteVersion?.model_glb;
-
-                      return (
-                        <div key={piece.id} className="aspect-square bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex items-center justify-center relative group-hover:border-violet-200 transition-colors">
-                          <PieceThumbnail imageSrc={imageSrc} pieceType={piece.type} />
-
-                          {has3DModel && (
-                            <div className="absolute top-1.5 left-1.5 flex items-center justify-center pointer-events-none" title="Modello 3D pronto">
-                              <Box className="w-4 h-4 text-violet-400 drop-shadow-sm group-hover:text-violet-500 transition-colors" strokeWidth={2.5} />
-                            </div>
-                          )}
-
-                          <div className="absolute bottom-1 right-1">
-                            {isComplete ? (
-                              <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shadow-sm">
-                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                              </div>
-                            ) : (
-                              <svg className="w-8 h-8" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="35" fill="white" />
-                                <circle cx="50" cy="50" r="35" fill="none" stroke="#f1f5f9" strokeWidth="12" />
-                                <circle cx="50" cy="50" r="35" fill="none" stroke={completionPercentage > 50 ? "#8b5cf6" : "#c4b5fd"} strokeWidth="12" strokeDasharray={`${2 * Math.PI * 35}`} strokeDashoffset={`${2 * Math.PI * 35 * (1 - completionPercentage / 100)}`} strokeLinecap="round" style={{ transform: 'rotate(-90deg)', transformOrigin: '50px 50px', transition: 'stroke-dashoffset 0.3s ease' }} />
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </button>
+                  set={set}
+                  onNavigate={() => navigate(`/sets/${set.id}`)}
+                  onDelete={() => queryClient.invalidateQueries({ queryKey: ['chess-sets'] })}
+                />
               ))
             )}
           </>

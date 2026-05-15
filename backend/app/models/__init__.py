@@ -69,6 +69,7 @@ class ChessSet(ChessSetBase, table=True):
         default_factory=datetime.utcnow,
         sa_column=Column(DateTime, nullable=False)
     )
+    is_seeded: bool = Field(default=False, nullable=False, sa_column_kwargs={"server_default": "false"})
     
     # Relationships
     pieces: List["ChessPiece"] = Relationship(
@@ -89,6 +90,7 @@ class ChessSetRead(ChessSetBase):
     """Schema for reading a chess set"""
     id: int
     created_at: datetime
+    is_seeded: bool = False
 
 
 class ChessSetReadWithPieces(ChessSetRead):

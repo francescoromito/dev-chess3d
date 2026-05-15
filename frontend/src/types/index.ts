@@ -16,6 +16,7 @@ export interface ChessSet {
   name: string;
   description: string | null;
   created_at: string;
+  is_seeded: boolean;
 }
 
 export interface ChessSetWithPieces extends ChessSet {

@@ -125,6 +125,13 @@ export const chessSetsApi = {
   },
 };
 
+// Admin API
+export const adminApi = {
+  resetDb: async (): Promise<void> => {
+    await api.post('/admin/reset-db');
+  },
+};
+
 // Collections API
 export const collectionsApi = {
   getAll: async (): Promise<any[]> => {
@@ -190,7 +197,8 @@ export const piecesApi = {
     if (data.img_back) formData.append('img_back', data.img_back);
     if (data.img_side_r) formData.append('img_side_r', data.img_side_r);
     if (data.img_side_l) formData.append('img_side_l', data.img_side_l);
-    if (data.model_glb) formData.append('model_glb', data.model_glb);
+    if (data.model_glb) formData.append('model_glb', data.model_glb);
+
 
     const response = await api.post<PieceVersion>(
       `/pieces/${pieceId}/versions`,

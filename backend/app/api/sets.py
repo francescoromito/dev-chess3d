@@ -113,8 +113,18 @@ def delete_chess_set(
     """
     Delete a chess set and all its pieces
     """
+    db_set = ChessSetService.get_set_by_id(session, set_id)
+    if not db_set:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Chess set with id {set_id} not found"
+        )
+    if db_set.is_seeded:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="I set base non possono essere eliminati"
+        )
     success = ChessSetService.delete_set(session, set_id)
-    
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

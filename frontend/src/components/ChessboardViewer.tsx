@@ -3,7 +3,7 @@
  * Displays an 8x8 chessboard with chess pieces from a set
  */
 import { Suspense, useMemo, useState, Component, ErrorInfo, ReactNode } from 'react';
-import { Canvas, useLoader } from '@react-three/fiber';
+import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import * as THREE from 'three';
@@ -280,15 +280,6 @@ function ChessboardScene({ squareSizeCm, pieces, showEnemyPieces }: ChessboardSc
   const kingModel = getModelInfo(pieces, 'king');
   const pawnModel = getModelInfo(pieces, 'pawn');
   
-  // Debug: log pieces and model info
-  console.log('ChessboardScene pieces:', pieces);
-  console.log('Rook model info:', rookModel);
-  console.log('Knight model info:', knightModel);
-  console.log('Bishop model info:', bishopModel);
-  console.log('Queen model info:', queenModel);
-  console.log('King model info:', kingModel);
-  console.log('Pawn model info:', pawnModel);
-
   // Files for pawns (a-h)
   const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
@@ -429,6 +420,21 @@ function ChessboardScene({ squareSizeCm, pieces, showEnemyPieces }: ChessboardSc
   );
 }
 
+// Requests a new frame whenever the user interacts with OrbitControls (needed for frameloop="demand")
+function OrbitControlsWithInvalidate() {
+  const { invalidate } = useThree();
+  return (
+    <OrbitControls
+      enablePan={true}
+      enableZoom={true}
+      enableRotate={true}
+      minDistance={5}
+      maxDistance={100}
+      onChange={() => invalidate()}
+    />
+  );
+}
+
 export default function ChessboardViewer({ isOpen, onClose, pieces, setName }: ChessboardViewerProps) {
   const [selectedPreset, setSelectedPreset] = useState<PresetKey>('small');
   const [customSize, setCustomSize] = useState<number>(4);
@@ -516,55 +522,19 @@ export default function ChessboardViewer({ isOpen, onClose, pieces, setName }: C
 
         {/* 3D Canvas */}
         <div className="w-full h-full">
-          <Canvas camera={{ position: [0, 8, 8], fov: 50 }} shadows>
+          <Canvas camera={{ position: [0, 8, 8], fov: 50 }} frameloop="demand" dpr={[1, 1.5]}>
             <color attach="background" args={['#1e293b']} />
             
-            {/* Enhanced lighting setup - stronger for dark piece visibility */}
-            <ambientLight intensity={0.6} />
-            
-            {/* Main directional light - warm tone */}
-            <directionalLight 
-              position={[8, 15, 10]} 
-              intensity={1.4} 
-              castShadow
-              shadow-mapSize={[1024, 1024]}
-              color="#fff8f0"
-            />
-            
-            {/* Strong fill light from opposite side */}
-            <directionalLight position={[-10, 12, -8]} intensity={0.8} color="#f0f5ff" />
-            
-            {/* Additional fill from front */}
-            <directionalLight position={[0, 10, 15]} intensity={0.5} />
-            
-            {/* Point lights for soft highlights - increased */}
-            <pointLight position={[12, 10, 12]} intensity={0.8} color="#fffaf0" />
-            <pointLight position={[-12, 10, -12]} intensity={0.6} color="#f0faff" />
-            <pointLight position={[12, 10, -12]} intensity={0.5} color="#ffffff" />
-            <pointLight position={[-12, 10, 12]} intensity={0.5} color="#ffffff" />
-            
-            {/* Top spotlight for even coverage */}
-            <spotLight 
-              position={[0, 25, 0]} 
-              angle={0.9} 
-              penumbra={1} 
-              intensity={1.0}
-            />
-            
-            {/* Hemisphere light for natural feel - great for dark objects */}
+            {/* 3 lights only — more lights multiply fragment shader cost for all 32 pieces */}
+            <ambientLight intensity={0.7} />
+            <directionalLight position={[8, 15, 10]} intensity={1.5} color="#fff8f0" />
             <hemisphereLight args={['#ffffff', '#444444', 0.5]} />
             
             <Suspense fallback={null}>
               <ChessboardScene squareSizeCm={squareSizeCm} pieces={pieces} showEnemyPieces={showEnemyPieces} />
             </Suspense>
             
-            <OrbitControls 
-              enablePan={true}
-              enableZoom={true}
-              enableRotate={true}
-              minDistance={5}
-              maxDistance={100}
-            />
+            <OrbitControlsWithInvalidate />
           </Canvas>
         </div>
         {/* Controls hint */}

@@ -212,24 +212,21 @@ function ChessPiece({ modelInfo, file, rank, scale = 1, rotationY = 0, squareSiz
   const position = squareToPosition(file, rank, squareSizeCm);
   const groupRef = useRef<THREE.Group>(null);
   
-  // Shake animation when trying to move while in check
+  // Reset position when all animations stop
+  useEffect(() => {
+    if (!groupRef.current || isShaking || isInCheck || isAnimating) return;
+    groupRef.current.position.set(position[0], position[1], position[2]);
+  }, [isShaking, isInCheck, isAnimating, position]);
+
+  // Only run per-frame math when something is actually animating
   useFrame((state) => {
-    if (groupRef.current) {
-      if (isShaking) {
-        // Shake effect
-        const shake = Math.sin(state.clock.elapsedTime * 50) * 0.15;
-        groupRef.current.position.x = position[0] + shake;
-      } else {
-        groupRef.current.position.x = position[0];
-      }
-      
-      // Pulsing glow effect when in check
-      if (isInCheck) {
-        const pulse = Math.sin(state.clock.elapsedTime * 4) * 0.5 + 0.5;
-        groupRef.current.position.y = position[1] + pulse * 0.3;
-      } else if (!isAnimating) {
-        groupRef.current.position.y = position[1];
-      }
+    if (!groupRef.current || (!isShaking && !isInCheck && !isAnimating)) return;
+    if (isShaking) {
+      groupRef.current.position.x = position[0] + Math.sin(state.clock.elapsedTime * 50) * 0.15;
+    }
+    if (isInCheck) {
+      const pulse = Math.sin(state.clock.elapsedTime * 4) * 0.5 + 0.5;
+      groupRef.current.position.y = position[1] + pulse * 0.3;
     }
   });
   
@@ -275,7 +272,7 @@ function CheckGlowEffect() {
   
   return (
     <mesh ref={meshRef} position={[0, 0.5, 0]}>
-      <sphereGeometry args={[2.5, 16, 16]} />
+      <sphereGeometry args={[2.5, 8, 8]} />
       <meshBasicMaterial color="#ff0000" transparent opacity={0.25} />
     </mesh>
   );
@@ -309,7 +306,7 @@ function PieceMarker({ pieceType, squareSizeCm }: { pieceType: string; squareSiz
     <group position={[0, 0, 0]}>
       {/* Neon Torus Ring at base - 3D object that won't be hidden */}
       <mesh ref={ringRef} position={[0, 0.1, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[squareSizeCm * 0.42, squareSizeCm * 0.04, 16, 32]} />
+        <torusGeometry args={[squareSizeCm * 0.42, squareSizeCm * 0.04, 8, 16]} />
         <meshStandardMaterial 
           color={markerColor} 
           emissive={markerColor}
@@ -320,7 +317,7 @@ function PieceMarker({ pieceType, squareSizeCm }: { pieceType: string; squareSiz
       
       {/* Vertical light beam */}
       <mesh ref={cylinderRef} position={[0, 1, 0]}>
-        <cylinderGeometry args={[squareSizeCm * 0.4, squareSizeCm * 0.4, 2, 32, 1, true]} />
+        <cylinderGeometry args={[squareSizeCm * 0.4, squareSizeCm * 0.4, 2, 16, 1, true]} />
         <meshBasicMaterial 
           color={markerColor} 
           transparent 
@@ -332,12 +329,12 @@ function PieceMarker({ pieceType, squareSizeCm }: { pieceType: string; squareSiz
       
       {/* Floor glow disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-        <circleGeometry args={[squareSizeCm * 0.45, 32]} />
+        <circleGeometry args={[squareSizeCm * 0.45, 16]} />
         <meshBasicMaterial color={markerColor} transparent opacity={0.5} />
       </mesh>
       
       {/* Strong point light */}
-      <pointLight color={markerColor} intensity={3} distance={squareSizeCm * 3} decay={2} position={[0, 0.5, 0]} />
+      {/* pointLight removed: up to 32 dynamic lights causes severe GPU overhead */}
     </group>
   );
 }
@@ -353,7 +350,7 @@ function MoveIndicator({ file, rank, squareSizeCm, onClick }: { file: string; ra
       rotation={[-Math.PI / 2, 0, 0]}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
     >
-      <circleGeometry args={[indicatorSize, 32]} />
+      <circleGeometry args={[indicatorSize, 16]} />
       <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
     </mesh>
   );
@@ -797,14 +794,11 @@ function GameScene({ whitePieces, blackPieces, squareSizeCm = 6, playerColor = '
   useEffect(() => {
     const aiColor = playerColor === 'white' ? 'black' : 'white';
     
-    console.log('AI useEffect triggered:', { currentTurn, aiColor, isAiThinking, gameOver });
     
     if (currentTurn !== aiColor || isAiThinking || gameOver) {
-      console.log('AI useEffect blocked');
       return;
     }
     
-    console.log('AI should make a move now!');
     
     const makeAiMove = async () => {
       setIsAiThinking(true);
@@ -812,11 +806,9 @@ function GameScene({ whitePieces, blackPieces, squareSizeCm = 6, playerColor = '
         // Use ref to get the latest pieces value
         const currentPieces = piecesRef.current;
         const fen = piecesToFen(currentPieces, currentTurn);
-        console.log('AI requesting move for FEN:', fen);
         const response = await chessEngineApi.getBestMove(fen, aiElo);
         
         if (response.best_move_uci) {
-          console.log('AI best move:', response.best_move_uci);
           
           // Check if it's a promotion (5 chars like "e7e8q")
           const isPromotion = response.best_move_uci.length === 5;
@@ -829,7 +821,6 @@ function GameScene({ whitePieces, blackPieces, squareSizeCm = 6, playerColor = '
           const fromRank = parseInt(response.best_move_uci[1]);
           const pieceToMove = currentPieces.find(p => p.file === fromFile && p.rank === fromRank);
           
-          console.log('AI piece to move:', pieceToMove, 'from', fromFile, fromRank);
           
           if (pieceToMove) {
             setAnimatingPieces(new Set([pieceToMove.id]));
@@ -840,22 +831,18 @@ function GameScene({ whitePieces, blackPieces, squareSizeCm = 6, playerColor = '
           
           // Execute the move - use ref to get latest pieces
           const latestPieces = piecesRef.current;
-          console.log('AI executing move with pieces count:', latestPieces.length);
           const newPieces = executeMove(response.best_move_uci, aiColor, latestPieces, isPromotion, promotionPiece);
-          console.log('AI move executed, newPieces count:', newPieces.length);
           setPieces(newPieces);
           setAnimatingPieces(new Set());
           
           // Notify parent
           if (onMoveMade) {
-            console.log('AI calling onMoveMade:', response.best_move_uci, aiColor);
             onMoveMade(response.best_move_uci, aiColor);
           }
           
           // Check game state
           await checkGameState(newPieces, playerColor);
           
-          console.log('AI setting turn to:', playerColor);
           setCurrentTurn(playerColor);
         }
       } catch (err) {
@@ -924,21 +911,17 @@ function GameScene({ whitePieces, blackPieces, squareSizeCm = 6, playerColor = '
   };
 
   const handleMoveClick = (file: string, rank: number) => {
-    console.log('handleMoveClick called:', { file, rank, selectedPieceId, currentTurn, playerColor, isAiThinking, gameOver });
     
     if (!selectedPieceId || currentTurn !== playerColor || isAiThinking || gameOver || awaitingPromotion) {
-      console.log('handleMoveClick blocked by condition');
       return;
     }
     
     const movingPiece = pieces.find(p => p.id === selectedPieceId);
     if (!movingPiece) {
-      console.log('movingPiece not found');
       return;
     }
     
     const uciMove = `${movingPiece.file}${movingPiece.rank}${file}${rank}`;
-    console.log('UCI move:', uciMove);
     
     // Check for pawn promotion - show modal instead of auto-promoting
     const isPromotion = movingPiece.type === 'pawn' && 
@@ -977,7 +960,6 @@ function GameScene({ whitePieces, blackPieces, squareSizeCm = 6, playerColor = '
     
     // Execute non-promotion move immediately
     const newPieces = executeMove(uciMove, playerColor, pieces, false, 'queen');
-    console.log('Move executed, newPieces count:', newPieces.length);
     
     // Update pieces AND ref immediately - ref must be updated before setCurrentTurn
     piecesRef.current = newPieces;
@@ -986,7 +968,6 @@ function GameScene({ whitePieces, blackPieces, squareSizeCm = 6, playerColor = '
     
     // Notify parent
     if (onMoveMade) {
-      console.log('Calling onMoveMade:', uciMove, playerColor);
       onMoveMade(uciMove, playerColor);
     }
     
@@ -995,7 +976,6 @@ function GameScene({ whitePieces, blackPieces, squareSizeCm = 6, playerColor = '
     checkGameState(newPieces, nextTurn);
     
     // Switch turn LAST - this triggers the AI useEffect
-    console.log('Switching turn to:', nextTurn);
     setCurrentTurn(nextTurn);
   };
 
@@ -1144,46 +1124,11 @@ export default function PlayableChessboard({ whitePieces, blackPieces, squareSiz
   
   return (
     <div className="w-full h-full bg-gray-900 relative">
-      <Canvas camera={{ position: [0, 40, cameraZ], fov: 45 }} shadows>
-        {/* Enhanced lighting setup - stronger for dark piece visibility */}
-        <ambientLight intensity={0.7} />
-        
-        {/* Main directional light from top-front - creates nice shadows */}
-        <directionalLight 
-          position={[10, 30, 20]} 
-          intensity={1.5} 
-          castShadow
-          shadow-mapSize={[2048, 2048]}
-          shadow-camera-far={100}
-          shadow-camera-left={-30}
-          shadow-camera-right={30}
-          shadow-camera-top={30}
-          shadow-camera-bottom={-30}
-        />
-        
-        {/* Strong fill light from opposite side - helps dark pieces */}
-        <directionalLight position={[-15, 25, -15]} intensity={0.9} />
-        
-        {/* Additional fill from front */}
-        <directionalLight position={[0, 20, 30]} intensity={0.6} />
-        
-        {/* Soft point lights for ambiance - increased intensity */}
-        <pointLight position={[25, 20, 25]} intensity={1.0} color="#fff5e6" />
-        <pointLight position={[-25, 20, -25]} intensity={0.8} color="#e6f0ff" />
-        <pointLight position={[25, 20, -25]} intensity={0.6} color="#ffffff" />
-        <pointLight position={[-25, 20, 25]} intensity={0.6} color="#ffffff" />
-        
-        {/* Top spotlight for even coverage */}
-        <spotLight 
-          position={[0, 50, 0]} 
-          angle={0.8} 
-          penumbra={1} 
-          intensity={1.2} 
-          color="#ffffff"
-        />
-        
-        {/* Hemisphere light for natural outdoor feel - great for dark objects */}
-        <hemisphereLight args={['#ffffff', '#444444', 0.6]} />
+      <Canvas camera={{ position: [0, 40, cameraZ], fov: 45 }} dpr={[1, 1.5]}>
+        {/* 3 lights only — more lights multiply fragment shader cost for all 32 pieces */}
+        <ambientLight intensity={0.8} />
+        <directionalLight position={[10, 30, 20]} intensity={1.6} />
+        <hemisphereLight args={['#ffffff', '#444444', 0.5]} />
         
         <Suspense fallback={null}>
           <GameScene 

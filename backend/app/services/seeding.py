@@ -252,7 +252,8 @@ def import_chess_set(session: Session, set_data: Dict, collection: Collection) -
     # Create the chess set
     db_set = ChessSet(
         name=set_name,
-        description=set_data.get('description')
+        description=set_data.get('description'),
+        is_seeded=True
     )
     session.add(db_set)
     session.commit()
