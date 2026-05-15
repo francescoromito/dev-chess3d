@@ -3,7 +3,7 @@
  * Shows a +Carica button for uploading a 3D model when not present
  */
 import { useRef } from 'react';
-import { Plus, Box } from 'lucide-react';
+import { Box } from 'lucide-react';
 
 interface ModelPlaceholderProps {
   label: string;
@@ -22,9 +22,7 @@ export default function ModelPlaceholder({ label, onUpload, accept = '.glb,.gltf
   };
 
   return (
-    <div className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-gray-50 relative">
-      <Box className="w-8 h-8 text-gray-400 mb-2" />
-      <span className="text-gray-400 text-sm mb-2">{label}</span>
+    <>
       <input
         ref={fileInputRef}
         type="file"
@@ -35,11 +33,12 @@ export default function ModelPlaceholder({ label, onUpload, accept = '.glb,.gltf
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow transition-colors"
+        className="w-full h-full rounded-xl border-2 border-slate-200 hover:border-violet-400 overflow-hidden bg-slate-900 flex flex-col items-center justify-center transition-all hover:scale-[1.02] hover:shadow-lg"
+        title={`Carica — ${label}`}
       >
-        <Plus className="w-4 h-4" />
-        Carica
+        <Box className="w-6 h-6 text-slate-300 mb-1" />
+        <span className="text-xs text-slate-400 text-center px-1 leading-tight">{label}</span>
       </button>
-    </div>
+    </>
   );
 }

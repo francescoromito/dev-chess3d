@@ -16,9 +16,11 @@ interface ModelCardProps {
   onRemove?: () => void;
   pieceType?: string; // e.g. "king", "queen", "knight", etc.
   versionId?: number; // used for backend STL conversion
+  inlineViewer?: boolean; // render as inline viewer instead of a card with a modal
+  thumbnailUrl?: string; // optional thumbnail to display on the card
 }
 
-export default function ModelCard({ src, label, fileType, onEdit, onRemove, pieceType, versionId }: ModelCardProps) {
+export default function ModelCard({ src, label, fileType, onEdit, onRemove, pieceType, versionId, inlineViewer = false, thumbnailUrl }: ModelCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [rotation, setRotation] = useState({ x: 0, y: 0, z: 0 });
@@ -34,13 +36,13 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
   const [baseSize, setBaseSize] = useState<{ width: number; height: number; depth: number } | null>(null);
   const [lockProportions, setLockProportions] = useState(true);
   const [expandControls, setExpandControls] = useState(false);
-  const [activePreset, setActivePreset] = useState<'small' | 'medium' | 'large' | 'current'>('current');
+  const [activePreset, setActivePreset] = useState<'small' | 'current'>('current');
   // Snapshot captured when the modal opens — used by "Attuale" button
   const initialScaleRef = useRef({ x: 1, y: 1, z: 1 });
   const initialBaseSizeCmRef = useRef(sizePresets.presets.small.baseSizeCm);
 
   // Get default height for this piece type from a specific preset
-  const getDefaultHeight = (preset: 'small' | 'medium' | 'large') => {
+  const getDefaultHeight = (preset: 'small') => {
     const presetConfig = sizePresets.presets[preset];
     if (pieceType && pieceType in presetConfig.pieceHeights) {
       return (presetConfig.pieceHeights as Record<string, number>)[pieceType];
@@ -49,7 +51,7 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
   };
 
   // Apply a preset
-  const applyPreset = (preset: 'small' | 'medium' | 'large') => {
+  const applyPreset = (preset: 'small') => {
     const presetConfig = sizePresets.presets[preset];
     setBaseSizeCm(presetConfig.baseSizeCm);
     setActivePreset(preset);
@@ -121,44 +123,11 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
         className="hidden"
       />
 
-      {/* Card */}
-      <div
-        onClick={() => setIsOpen(true)}
-        className="group relative cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-gradient-to-br from-slate-700 to-slate-800 shadow-sm transition-all hover:shadow-lg hover:border-blue-400 hover:scale-[1.02]"
-      >
-        {onRemove && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onRemove(); }}
-            title="Rimuovi"
-            className="absolute top-2 right-2 z-10 inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/80 hover:bg-red-600 transition-colors"
-          >
-            <Trash2 className="w-4 h-4 text-red-600 hover:text-white" />
-          </button>
-        )}
-        <div className="aspect-square flex flex-col items-center justify-center p-4">
-          <Box className="w-12 h-12 text-slate-400 group-hover:text-blue-400 transition-colors mb-2" />
-          <span className="text-xs text-slate-300 uppercase font-semibold tracking-wider">
-            {fileType.toUpperCase()}
-          </span>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-          <p className="text-white text-sm font-medium">{label}</p>
-        </div>
-        <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 transition-colors flex items-center justify-center">
-          <span className="text-white text-xs opacity-0 group-hover:opacity-100 bg-blue-600 px-3 py-1 rounded-full transition-opacity">
-            Visualizza 3D
-          </span>
-        </div>
-      </div>
-
-      {/* Modal with 3D Viewer */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
-          onClick={() => setIsOpen(false)}
-        >
+      {/* Viewer Content (Abstracted to reuse inline or in modal) */}
+      {(() => {
+        const viewerContent = (
           <div
-            className="relative w-full max-w-4xl h-[80vh] bg-slate-900 rounded-xl overflow-hidden shadow-2xl"
+            className={`relative w-full h-[90vh] max-w-7xl shadow-2xl bg-slate-900 rounded-xl overflow-hidden flex flex-col`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -355,7 +324,7 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
                 <div className="w-80 p-4 pt-16 bg-slate-800 border-l border-slate-700 overflow-y-auto">
                   {/* Size Presets Buttons */}
                   <h4 className="text-sm text-white mb-2">Dimensioni</h4>
-                  <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="grid grid-cols-3 gap-2 mb-4">
                     <button
                       onClick={applyCurrentPreset}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -366,7 +335,7 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
                     >
                       Attuale
                     </button>
-                    {(Object.keys(sizePresets.presets) as Array<'small' | 'medium' | 'large'>).map((preset) => (
+                    {(Object.keys(sizePresets.presets) as Array<'small'>).map((preset) => (
                       <button
                         key={preset}
                         onClick={() => applyPreset(preset)}
@@ -379,6 +348,12 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
                         {sizePresets.presets[preset].label}
                       </button>
                     ))}
+                    <button
+                      onClick={() => setExpandControls(true)}
+                      className="px-3 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600"
+                    >
+                      Custom
+                    </button>
                   </div>
 
                   {/* Expander for advanced controls */}
@@ -550,8 +525,108 @@ export default function ModelCard({ src, label, fileType, onEdit, onRemove, piec
               </p>
             </div>
           </div>
-        </div>
-      )}
+        );
+
+        if (inlineViewer) {
+          return (
+            <>
+              <div className="relative w-full h-full min-h-[500px] rounded-xl overflow-hidden shadow-inner group bg-slate-900 flex">
+                <Suspense fallback={
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  </div>
+                }>
+                  <ModelViewer
+                    key={src}
+                    url={src}
+                    fileType={fileType}
+                    rotation={rotation}
+                    scale={modelScale}
+                    baseSizeCm={0} // Rimosso dalla preview
+                  />
+                </Suspense>
+                
+                {/* Overlays */}
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
+                  <button
+                    onClick={() => setIsOpen(true)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm shadow-lg font-medium cursor-pointer"
+                  >
+                    Avanzate
+                  </button>
+                </div>
+                
+                <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                  <p className="text-slate-400 text-xs bg-black/50 px-2 py-1 rounded">
+                    🖱️ Ruota: click + trascina | Zoom: scroll
+                  </p>
+                </div>
+              </div>
+
+              {isOpen && (
+                <div
+                  className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+                  onPointerDown={(e) => { if (e.target === e.currentTarget) setIsOpen(false); }}
+                >
+                  {viewerContent}
+                </div>
+              )}
+            </>
+          );
+        }
+
+        return (
+          <>
+            {/* Card */}
+            <div
+              onClick={() => setIsOpen(true)}
+              className="group relative cursor-pointer overflow-hidden rounded-xl border-2 border-slate-200 bg-slate-900 shadow-sm transition-all hover:shadow-lg hover:border-violet-400 hover:scale-[1.02] w-full aspect-square flex flex-col justify-end"
+            >
+              {/* Miniature 3D Viewer (no interaction) */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                <Suspense fallback={<div className="flex flex-col items-center"><Loader2 className="w-6 h-6 text-slate-400 animate-spin mb-2" /><span className="text-xs text-slate-500">Caricamento...</span></div>}>
+                  <ModelViewer
+                    url={src}
+                    fileType={fileType}
+                    rotation={{ x: 0, y: Math.PI / 6, z: 0 }}
+                    scale={{ x: 1, y: 1, z: 1 }}
+                    baseSizeCm={0}
+                    showControlsHint={false}
+                  />
+                </Suspense>
+              </div>
+              
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-transparent pointer-events-none"></div>
+
+              {onRemove && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                  title="Rimuovi"
+                  className="absolute top-2 right-2 z-20 inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-800/80 hover:bg-red-600 transition-colors backdrop-blur-[2px]"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-white" />
+                </button>
+              )}
+              
+              <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-slate-900/50 backdrop-blur-[1px] transition-all duration-300 z-10">
+                <span className="text-white text-xs font-semibold bg-violet-600/90 shadow-md px-3 py-1.5 rounded-full transform translate-y-2 group-hover:translate-y-0 transition-transform">
+                  Visualizza 3D
+                </span>
+              </div>
+            </div>
+
+            {/* Modal with 3D Viewer */}
+            {isOpen && (
+              <div
+                className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+                onPointerDown={(e) => { if (e.target === e.currentTarget) setIsOpen(false); }}
+              >
+                {viewerContent}
+              </div>
+            )}
+          </>
+        );
+      })()}
     </>
   );
 }

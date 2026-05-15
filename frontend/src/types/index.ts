@@ -93,8 +93,8 @@ export const SLOT_LABELS: Record<SlotField, string> = {
   img_back: 'Retro',
   img_side_r: 'Destra',
   img_side_l: 'Sinistra',
-  model_glb: 'Modello GLB',
-  model_stl: 'Modello STL',
+  model_glb: 'Modello 3D',
+  model_stl: 'Stampa 3D',
 };
 
 export interface StagedFile {

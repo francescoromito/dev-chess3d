@@ -10,13 +10,12 @@
  *   />
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Eraser, Trash2, Minus, Plus } from 'lucide-react';
+import { X, Check, Eraser, Trash2, Minus, Plus } from 'lucide-react';
 
 interface DrawingCanvasProps {
   baseImageUrl: string;
-  onSubmit: (annotatedBlob: Blob, prompt: string) => void;
+  onApplyDirectly: (blob: Blob) => void;
   onCancel: () => void;
-  isSubmitting?: boolean;
 }
 
 type DrawMode = 'draw' | 'erase';
@@ -34,9 +33,8 @@ const CANVAS_SIZE = 512; // square canvas
 
 export default function DrawingCanvas({
   baseImageUrl,
-  onSubmit,
+  onApplyDirectly,
   onCancel,
-  isSubmitting = false,
 }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -46,7 +44,6 @@ export default function DrawingCanvas({
   const [color, setColor] = useState('#ef4444');
   const [brushSize, setBrushSize] = useState(8);
   const [mode, setMode] = useState<DrawMode>('draw');
-  const [prompt, setPrompt] = useState('');
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -166,9 +163,7 @@ export default function DrawingCanvas({
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
   };
 
-  const handleSubmit = () => {
-    if (!prompt.trim()) return;
-    // Composite: base canvas + overlay canvas → final blob
+  const handleApplyDirectly = () => {
     const composite = document.createElement('canvas');
     composite.width = CANVAS_SIZE;
     composite.height = CANVAS_SIZE;
@@ -178,7 +173,7 @@ export default function DrawingCanvas({
     if (overlayRef.current) ctx.drawImage(overlayRef.current, 0, 0);
     composite.toBlob(
       (blob) => {
-        if (blob) onSubmit(blob, prompt.trim());
+        if (blob) onApplyDirectly(blob);
       },
       'image/png'
     );
@@ -318,33 +313,21 @@ export default function DrawingCanvas({
           </div>
         </div>
 
-        {/* Prompt + actions */}
-        <div className="px-4 py-4 border-t space-y-3">
+        {/* Actions */}
+        <div className="px-4 py-4 border-t">
           {imageError && (
-            <p className="text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg">
-              L'immagine base non è caricabile a causa di restrizioni CORS. Puoi comunque disegnare e inviare all'AI.
+            <p className="text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg mb-3">
+              L'immagine base non è caricabile a causa di restrizioni CORS. Puoi comunque disegnare sopra.
             </p>
           )}
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Descrivi la modifica da applicare all'annotazione… Es: sostituisci la chiazza blu con la corona del re"
-            rows={2}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
-          />
           <div className="flex gap-2 justify-end">
             <button
-              onClick={onCancel}
-              className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Annulla
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={!prompt.trim() || isSubmitting || !imageLoaded}
+              onClick={handleApplyDirectly}
+              disabled={!imageLoaded}
               className="flex items-center gap-2 px-5 py-2 text-sm bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors shadow-sm"
             >
-              {isSubmitting ? 'Invio in corso…' : 'Invia all\'AI'}
+              <Check className="w-4 h-4" />
+              Usa questa versione
             </button>
           </div>
         </div>

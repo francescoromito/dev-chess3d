@@ -173,7 +173,7 @@ class PieceVersionRead(PieceVersionBase):
     created_at: datetime
     @computed_field
     def completion_percentage(self) -> int:
-        """Calculate completion percentage based on uploaded files (4 images + 2 models = 6 total)
+        """Calculate completion percentage based on uploaded files (4 images + 1 model = 5 total)
 
         Implemented as a pydantic computed field so it's included in serialization
         even when nested inside other response models.
@@ -189,9 +189,7 @@ class PieceVersionRead(PieceVersionBase):
             count += 1
         if self.model_glb:
             count += 1
-        if self.model_stl:
-            count += 1
-        return int((count / 6) * 100)
+        return int((count / 5) * 100)
 
     @computed_field
     def is_complete(self) -> bool:

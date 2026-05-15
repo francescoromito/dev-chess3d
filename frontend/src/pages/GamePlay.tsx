@@ -40,8 +40,10 @@ export default function GamePlay() {
   // Move history
   const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
 
-  // Get size in cm from config
-  const squareSizeCm = (sizePresetsConfig.presets as any)[sizeKey]?.baseSizeCm || 6;
+  // Get size in cm from config — supports 'small' preset or 'custom_X' format
+  const squareSizeCm = sizeKey?.startsWith('custom_')
+    ? parseFloat(sizeKey.replace('custom_', '')) || 6
+    : (sizePresetsConfig.presets as any)[sizeKey]?.baseSizeCm || sizePresetsConfig.presets.small.baseSizeCm;
 
   const { data: playerSet, isLoading: isLoadingPlayer } = useQuery({
     queryKey: ['chess-set', playerSetId],

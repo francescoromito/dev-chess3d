@@ -23,6 +23,7 @@ interface ModelViewerProps {
   onDimensions?: (dims: { width: number; height: number; depth: number }, baseSize: { width: number; height: number; depth: number }) => void;
   // callback to report the model's scaled height for base plane positioning
   onModelHeight?: (height: number) => void;
+  showControlsHint?: boolean;
 }
 
 /**
@@ -283,7 +284,7 @@ function LoadingPlaceholder() {
 /**
  * Main Model Viewer component
  */
-const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, scale = { x: 1, y: 1, z: 1 }, baseSizeCm = 0, onDimensions }: ModelViewerProps, ref) {
+const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, scale = { x: 1, y: 1, z: 1 }, baseSizeCm = 0, onDimensions, showControlsHint = true }: ModelViewerProps, ref) {
   const stlMeshRef = useRef<THREE.Mesh>(null!);
   const glbGroupRef = useRef<THREE.Group>(null!);
 
@@ -537,11 +538,13 @@ const ModelViewer = forwardRef(function ModelViewer({ url, fileType, rotation, s
       </Canvas>
       
       {/* Controls hint */}
-      <div className="absolute bottom-2 left-2 right-2 text-center">
-        <p className="text-xs text-slate-400">
-          🖱️ Ruota: click + trascina | Zoom: scroll | Pan: click destro + trascina
-        </p>
-      </div>
+      {showControlsHint && (
+        <div className="absolute bottom-2 left-2 right-2 text-center pointer-events-none">
+          <p className="text-xs text-slate-400 bg-slate-900/50 inline-block px-3 py-1 rounded-full backdrop-blur-sm">
+            🖱️ Ruota: click + trascina | Zoom: scroll | Pan: click destro + trascina
+          </p>
+        </div>
+      )}
     </div>
     </WebGLErrorBoundary>
   );

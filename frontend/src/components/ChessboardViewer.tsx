@@ -28,8 +28,6 @@ interface SizeOption {
 
 const sizeOptions: SizeOption[] = [
   { key: 'small', label: sizePresetsConfig.presets.small.label, sizeCm: sizePresetsConfig.presets.small.baseSizeCm },
-  { key: 'medium', label: sizePresetsConfig.presets.medium.label, sizeCm: sizePresetsConfig.presets.medium.baseSizeCm },
-  { key: 'large', label: sizePresetsConfig.presets.large.label, sizeCm: sizePresetsConfig.presets.large.baseSizeCm },
   { key: 'custom', label: 'Custom', sizeCm: 0 },
 ];
 

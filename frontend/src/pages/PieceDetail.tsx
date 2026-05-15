@@ -2,16 +2,15 @@
  * Piece Detail Page Component
  * Shows versions of a piece and allows creating new versions
  */
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Image, Box, Star, CheckCircle, Upload, Download, Sparkles } from 'lucide-react';
+import { ArrowLeft, Image, Star, CheckCircle, Upload, Download, Sparkles, Trash2 } from 'lucide-react';
 import { piecesApi, getFileUrl } from '../services/api';
-import type { PieceVersion } from '../types';
+import type { PieceVersion, SlotField } from '../types';
+import { SLOT_LABELS } from '../types';
 import EditEntityModal from '../components/EditEntityModal';
-import ImageCard from '../components/ImageCard';
 import ModelCard from '../components/ModelCard';
-import ImagePlaceholder from '../components/ImagePlaceholder';
 import ModelPlaceholder from '../components/ModelPlaceholder';
 import AIStudioModal from '../components/AIStudioModal';
 
@@ -21,12 +20,11 @@ export default function PieceDetail() {
   const queryClient = useQueryClient();
   const [editVersionId, setEditVersionId] = useState<number | null>(null);
   const [aiStudioVersion, setAiStudioVersion] = useState<PieceVersion | null>(null);
+  const [aiStudioSlot, setAiStudioSlot] = useState<SlotField | undefined>(undefined);
   const [showNewVersionDialog, setShowNewVersionDialog] = useState(false);
   const [newVersionName, setNewVersionName] = useState('');
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
   const [newVersionError, setNewVersionError] = useState<string | null>(null);
-  const [downloadingId, setDownloadingId] = useState<number | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [isImporting, setIsImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   
@@ -52,14 +50,9 @@ export default function PieceDetail() {
     enabled: !!pieceId,
   });
 
-  const handleOpenAIStudio = () => {
-    if (sortedVersions && sortedVersions.length > 0) {
-      setAiStudioVersion(sortedVersions[0]);
-    } else {
-      setNewVersionName('');
-      setNewVersionError(null);
-      setShowNewVersionDialog(true);
-    }
+  const openAIStudio = (version: PieceVersion, slot?: SlotField) => {
+    setAiStudioSlot(slot);
+    setAiStudioVersion(version);
   };
 
   const handleCreateAndOpenAIStudio = async () => {
@@ -224,6 +217,15 @@ export default function PieceDetail() {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
+  useEffect(() => {
+    if (piece?.versions && piece.versions.length === 1) {
+      const singleVersion = piece.versions[0];
+      if (!singleVersion.is_favorite && !setFavoriteMutation.isPending) {
+        setFavoriteMutation.mutate(singleVersion.id);
+      }
+    }
+  }, [piece?.versions, setFavoriteMutation]);
+
   if (error) {
     return (
       <div className="text-center py-12">
@@ -271,11 +273,15 @@ export default function PieceDetail() {
 
       <div className="mb-6 flex gap-2 flex-wrap">
         <button
-          onClick={handleOpenAIStudio}
+          onClick={() => {
+            setNewVersionName('');
+            setNewVersionError(null);
+            setShowNewVersionDialog(true);
+          }}
           className="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors shadow-sm"
         >
           <Sparkles className="w-5 h-5 mr-2" />
-          AI Studio
+          Nuova Versione
         </button>
         <input
           ref={importInputRef}
@@ -344,8 +350,8 @@ export default function PieceDetail() {
                   </div>
                 </div>
 
-                {/* Completion Badge */}
-                <div className="flex items-center">
+                {/* Completion Badge & Delete Button */}
+                <div className="flex items-center gap-4">
                   {version.is_complete ? (
                     <div className="flex items-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-full">
                       <CheckCircle className="w-5 h-5" />
@@ -359,143 +365,129 @@ export default function PieceDetail() {
                       <span className="text-sm font-medium">In corso</span>
                     </div>
                   )}
-                </div>
 
-                {/* Delete Version Button */}
-                <div className="flex gap-2">
+                  {/* Delete Version Button */}
                   <button
-                    onClick={() => setEditVersionId(version.id)}
-                    className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    Modifica Versione
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (!confirm('Confermi la cancellazione di questa versione e dei suoi file?')) return;
-                      deleteVersionMutation.mutate(version.id);
-                    }}
-                    className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                  >
-                    Elimina versione
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (downloadingId) return;
-                      try {
-                        setDownloadingId(version.id);
-                        setDownloadProgress(0);
-                        const result = await piecesApi.downloadVersionZipWithProgress(
-                          version.id,
-                          (p) => setDownloadProgress(p)
-                        );
-                        const blob = result.blob;
-                        const suggested = result.filename;
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        // Prefer server-provided filename, fallback to version_{id}.zip
-                        a.download = suggested || `version_${version.id}.zip`;
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        window.URL.revokeObjectURL(url);
-                      } catch (e) {
-                        alert('Errore durante il download della versione');
-                      } finally {
-                        setDownloadingId(null);
-                        setDownloadProgress(0);
+                    onClick={() => {
+                      if (confirm('Sei sicuro di voler eliminare l\'intera versione? Tutte le immagini e il modello andranno persi.')) {
+                        deleteVersionMutation.mutate(version.id);
                       }
                     }}
-                    className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                    disabled={!!downloadingId}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                    title="Elimina questa versione"
                   >
-                    {downloadingId === version.id ? `Scaricando ${downloadProgress}%` : 'Scarica ZIP'}
+                    <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              {/* Images as Clickable Cards with Edit */}
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                  <Image className="w-4 h-4 mr-2" />
-                  Immagini (clicca per ingrandire e modificare)
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {version.img_front ? (
-                    <ImageCard
-                      src={getFileUrl(version.img_front) || ''}
-                      alt="Front view"
-                      label="Fronte"
-                      fieldName="img_front"
-                      onImageChange={(field, file) => handleFileChange(version.id, field, file)}
-                      onRemove={() => { if (confirm('Rimuovere immagine Fronte?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_front' }); }}
-                      onAIEdit={() => setAiStudioVersion(version)}
-                    />
-                  ) : (
-                    <ImagePlaceholder label="Fronte" onUpload={(file) => handleFileChange(version.id, 'img_front', file)} accept="image/*" onAIGenerate={() => setAiStudioVersion(version)} />
-                  )}
-                  {version.img_back ? (
-                    <ImageCard
-                      src={getFileUrl(version.img_back) || ''}
-                      alt="Back view"
-                      label="Retro"
-                      fieldName="img_back"
-                      onImageChange={(field, file) => handleFileChange(version.id, field, file)}
-                      onRemove={() => { if (confirm('Rimuovere immagine Retro?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_back' }); }}
-                      onAIEdit={() => setAiStudioVersion(version)}
-                    />
-                  ) : (
-                    <ImagePlaceholder label="Retro" onUpload={(file) => handleFileChange(version.id, 'img_back', file)} accept="image/*" onAIGenerate={() => setAiStudioVersion(version)} />
-                  )}
-                  {version.img_side_r ? (
-                    <ImageCard
-                      src={getFileUrl(version.img_side_r) || ''}
-                      alt="Right view"
-                      label="Destra"
-                      fieldName="img_side_r"
-                      onImageChange={(field, file) => handleFileChange(version.id, field, file)}
-                      onRemove={() => { if (confirm('Rimuovere immagine Destra?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_side_r' }); }}
-                      onAIEdit={() => setAiStudioVersion(version)}
-                    />
-                  ) : (
-                    <ImagePlaceholder label="Destra" onUpload={(file) => handleFileChange(version.id, 'img_side_r', file)} accept="image/*" onAIGenerate={() => setAiStudioVersion(version)} />
-                  )}
-                  {version.img_side_l ? (
-                    <ImageCard
-                      src={getFileUrl(version.img_side_l) || ''}
-                      alt="Left view"
-                      label="Sinistra"
-                      fieldName="img_side_l"
-                      onImageChange={(field, file) => handleFileChange(version.id, field, file)}
-                      onRemove={() => { if (confirm('Rimuovere immagine Sinistra?')) deleteFileMutation.mutate({ versionId: version.id, field: 'img_side_l' }); }}
-                      onAIEdit={() => setAiStudioVersion(version)}
-                    />
-                  ) : (
-                    <ImagePlaceholder label="Sinistra" onUpload={(file) => handleFileChange(version.id, 'img_side_l', file)} accept="image/*" onAIGenerate={() => setAiStudioVersion(version)} />
-                  )}
+              {/* AI Studio Slot Map — compact integrated view */}
+              <div className="mt-4">
+                <div className="flex items-center mb-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Viste Immagine e Modello 3D</p>
                 </div>
-              </div>
 
-              {/* 3D Models as Clickable Cards with 3D Viewer */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                  <Box className="w-4 h-4 mr-2" />
-                  Modelli 3D (clicca per visualizzare in 3D e modificare)
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {version.model_glb ? (
-                    <ModelCard
-                      src={getFileUrl(version.model_glb) || ''}
-                      label="Modello GLB"
-                      fileType="glb"
-                      versionId={version.id}
-                      onEdit={(file) => handleFileChange(version.id, 'model_glb', file)}
-                      onRemove={() => { if (confirm('Rimuovere modello GLB?')) deleteFileMutation.mutate({ versionId: version.id, field: 'model_glb' }); }}
-                      pieceType={piece?.type?.toLowerCase()}
-                    />
-                  ) : (
-                    <ModelPlaceholder label="GLB" onUpload={(file) => handleFileChange(version.id, 'model_glb', file)} accept=".glb,.gltf" />
-                  )}
+                {/* 5 slots grid */}
+                <div className="grid grid-cols-5 gap-3">
+                  {(['img_front', 'img_back', 'img_side_r', 'img_side_l'] as SlotField[]).map((slot) => {
+                    const url = version[slot as keyof PieceVersion] as string | null;
+                    const fileInputId = `upload-${version.id}-${slot}`;
+                    return (
+                      <div key={slot} className="relative group">
+                        <button
+                          onClick={() => openAIStudio(version, slot)}
+                          className="w-full aspect-square rounded-xl border-2 border-slate-200 hover:border-violet-400 overflow-hidden bg-slate-900 flex flex-col items-center justify-center transition-all hover:scale-[1.02] hover:shadow-lg"
+                          title={`Apri AI Studio — ${SLOT_LABELS[slot]}`}
+                        >
+                          {url ? (
+                            <>
+                              <img
+                                src={getFileUrl(url) || ''}
+                                alt={SLOT_LABELS[slot]}
+                                className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                                crossOrigin="anonymous"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <Image className="w-6 h-6 text-slate-300 mb-1" />
+                              <span className="text-xs text-slate-400 text-center px-1 leading-tight">{SLOT_LABELS[slot]}</span>
+                            </>
+                          )}
+                        </button>
+                        
+                        {url && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); if (confirm(`Rimuovere l'immagine di ${SLOT_LABELS[slot]}?`)) deleteFileMutation.mutate({ versionId: version.id, field: slot }); }}
+                            title="Rimuovi"
+                            className="absolute top-2 right-2 z-20 inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-800/80 hover:bg-red-600 transition-colors backdrop-blur-[2px] opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-white" />
+                          </button>
+                        )}
+
+                        {/* Label + status below */}
+                        <div className="flex items-center gap-1 mt-1 px-0.5">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${url ? 'bg-green-400' : 'bg-gray-300'}`} />
+                          <span className="text-xs text-gray-500 truncate flex-1">{SLOT_LABELS[slot]}</span>
+                          {/* Upload icon on hover */}
+                          <label htmlFor={fileInputId} className="cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Upload className="w-3.5 h-3.5 text-gray-400 hover:text-violet-600" />
+                          </label>
+                          <input
+                            id={fileInputId}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileChange(version.id, slot, file);
+                              e.target.value = '';
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  
+                  {/* 5th slot: 3D Model */}
+                  <div className="relative group">
+                    <div className="w-full aspect-square rounded-xl relative">
+                      {version.model_glb ? (
+                        <ModelCard
+                          src={getFileUrl(version.model_glb) || ''}
+                          label={SLOT_LABELS['model_glb']}
+                          fileType="glb"
+                          versionId={version.id}
+                          onEdit={(file) => handleFileChange(version.id, 'model_glb', file)}
+                          onRemove={() => { if (confirm('Rimuovere il modello 3D?')) deleteFileMutation.mutate({ versionId: version.id, field: 'model_glb' }); }}
+                          pieceType={piece?.type?.toLowerCase()}
+                        />
+                      ) : (
+                        <ModelPlaceholder label={SLOT_LABELS['model_glb']} onUpload={(file) => handleFileChange(version.id, 'model_glb', file)} accept=".glb,.gltf" />
+                      )}
+                    </div>
+                    {/* Status under 3D Model slot */}
+                    <div className="flex items-center gap-1 mt-1 px-0.5">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${version.model_glb ? 'bg-green-400' : 'bg-gray-300'}`} />
+                      <span className="text-xs text-gray-500 truncate flex-1">Modello 3D</span>
+                      {/* Upload icon on hover */}
+                      <label htmlFor={`upload-${version.id}-model_glb`} className="cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Upload className="w-3.5 h-3.5 text-gray-400 hover:text-violet-600" />
+                      </label>
+                      <input
+                        id={`upload-${version.id}-model_glb`}
+                        type="file"
+                        accept=".glb,.gltf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileChange(version.id, 'model_glb', file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+                  </div>
 
                 </div>
               </div>
@@ -508,11 +500,15 @@ export default function PieceDetail() {
           <p className="text-gray-700 font-semibold text-lg mb-1">Nessuna versione ancora</p>
           <p className="text-gray-400 text-sm mb-6">Usa l'AI per dare vita a questo pezzo — immagina lo stile e genera l'immagine in un click</p>
           <button
-            onClick={handleOpenAIStudio}
+            onClick={() => {
+              setNewVersionName('');
+              setNewVersionError(null);
+              setShowNewVersionDialog(true);
+            }}
             className="inline-flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold transition-colors shadow-md"
           >
             <Sparkles className="w-5 h-5" />
-            AI Studio
+            Nuova Versione
           </button>
         </div>
       )}
@@ -557,9 +553,15 @@ export default function PieceDetail() {
       {aiStudioVersion && piece && (
         <AIStudioModal
           isOpen={!!aiStudioVersion}
-          onClose={() => setAiStudioVersion(null)}
+          onClose={() => { setAiStudioVersion(null); setAiStudioSlot(undefined); }}
           piece={piece}
-          version={aiStudioVersion}
+          version={piece.versions?.find(v => v.id === aiStudioVersion.id) ?? aiStudioVersion}
+          defaultSlot={aiStudioSlot}
+          onDeleteVersion={() => {
+            deleteVersionMutation.mutate(aiStudioVersion.id);
+            setAiStudioVersion(null);
+            setAiStudioSlot(undefined);
+          }}
         />
       )}
       {editVersionId && sortedVersions && sortedVersions.length > 0 && (
