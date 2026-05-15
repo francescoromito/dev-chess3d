@@ -3,8 +3,10 @@ API endpoints for ChessSet operations
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
+from starlette.background import BackgroundTask
 import time
+import tempfile
 import logging
 from sqlmodel import Session, select
 from app.database import get_session
@@ -145,13 +147,16 @@ def download_chess_set_zip(set_id: int, session: Session = Depends(get_session))
         s = re.sub(pattern, '', s)
         return s[:200]
     
-    # Prepare zip buffer and record start time for timing
+    # Prepare temp file and record start time for timing
     start_time = time.time()
-    buf = io.BytesIO()
     set_name = db_set.name or f"set_{set_id}"
     zip_filename = f"{_sanitize(set_name)}.zip"
     
-    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+    fd, temp_file_path = tempfile.mkstemp(suffix=".zip")
+    os.close(fd)
+    
+    # Use ZIP_STORED to avoid CPU bottleneck and temp file to avoid RAM bottleneck
+    with zipfile.ZipFile(temp_file_path, 'w', zipfile.ZIP_STORED) as zf:
         # Add description.txt at the root with the chess set description
         description_content = db_set.description or ""
         zf.writestr('description.txt', description_content)
@@ -239,21 +244,23 @@ def download_chess_set_zip(set_id: int, session: Session = Depends(get_session))
                             with open(file_path, 'rb') as fh:
                                 zf.writestr(arcname, fh.read())
     
-    buf.seek(0)
-    # Compute size and log timing for performance analysis
+    # Ensure temporary file is cleaned up after sending
+    def cleanup_temp_file():
+        try:
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+        except Exception as e:
+            logger.error(f"Failed to remove temp file {temp_file_path}: {e}")
+
     try:
-        buf_bytes = buf.getvalue()
-        size = len(buf_bytes)
+        size = os.path.getsize(temp_file_path)
     except Exception:
-        # Fallback if getvalue() fails for some reason
-        buf_bytes = None
         size = None
 
-    duration = None
     try:
         duration = time.time() - start_time
     except Exception:
-        pass
+        duration = 0
 
     if size is not None:
         logger.info(f"Built ZIP for set_id={set_id} size={size} bytes in {duration:.2f}s")
@@ -261,12 +268,16 @@ def download_chess_set_zip(set_id: int, session: Session = Depends(get_session))
             "Content-Disposition": f"attachment; filename=\"{zip_filename}\"",
             "Content-Length": str(size)
         }
-        # Use the full bytes for the response to ensure Content-Length is accurate
-        return StreamingResponse(io.BytesIO(buf_bytes), media_type='application/zip', headers=headers)
     else:
+        logger.info(f"Built ZIP for set_id={set_id} (size unknown) in {duration:.2f}s")
         headers = {"Content-Disposition": f"attachment; filename=\"{zip_filename}\""}
-        logger.info(f"Built ZIP for set_id={set_id} (size unknown) in {duration if duration else 'N/A'}s")
-        return StreamingResponse(buf, media_type='application/zip', headers=headers)
+
+    return FileResponse(
+        path=temp_file_path,
+        media_type='application/zip',
+        headers=headers,
+        background=BackgroundTask(cleanup_temp_file)
+    )
 
 
 @router.post(

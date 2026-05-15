@@ -62,7 +62,6 @@ class PieceVersionService:
         img_side_r: Optional[UploadFile] = None,
         img_side_l: Optional[UploadFile] = None,
         model_glb: Optional[UploadFile] = None,
-        model_stl: Optional[UploadFile] = None
     ) -> PieceVersion:
         """
         Create a new piece version with uploaded files
@@ -108,17 +107,6 @@ class PieceVersionService:
                 model_glb, piece_id, "model_glb"
             )
         
-        if model_stl:
-            file_paths["model_stl"] = PieceVersionService._save_file(
-                model_stl, piece_id, "model_stl"
-            )
-        
-        # Create version record
-        db_version = PieceVersion(
-            piece_id=piece_id,
-            version_name=version_data.version_name,
-            **file_paths
-        )
         
         session.add(db_version)
         session.commit()
@@ -151,7 +139,6 @@ class PieceVersionService:
         img_side_r: Optional[UploadFile] = None,
         img_side_l: Optional[UploadFile] = None,
         model_glb: Optional[UploadFile] = None,
-        model_stl: Optional[UploadFile] = None
     ) -> PieceVersion:
         """
         Update an existing piece version with new files or name
@@ -212,14 +199,6 @@ class PieceVersionService:
                 model_glb, db_version.piece_id, "model_glb"
             )
         
-        if model_stl:
-            if db_version.model_stl:
-                old_path = PieceVersionService.UPLOAD_DIR / db_version.model_stl
-                if old_path.exists():
-                    old_path.unlink()
-            db_version.model_stl = PieceVersionService._save_file(
-                model_stl, db_version.piece_id, "model_stl"
-            )
         
         session.add(db_version)
         session.commit()
@@ -264,7 +243,7 @@ class PieceVersionService:
             return False
 
         # delete associated files on disk
-        file_fields = ['img_front', 'img_back', 'img_side_r', 'img_side_l', 'model_glb', 'model_stl']
+        file_fields = ['img_front', 'img_back', 'img_side_r', 'img_side_l', 'model_glb', ]
         for field in file_fields:
             val = getattr(db_version, field)
             if val:
@@ -287,7 +266,7 @@ class PieceVersionService:
         if not db_version:
             return None
 
-        allowed = {'img_front', 'img_back', 'img_side_r', 'img_side_l', 'model_glb', 'model_stl'}
+        allowed = {'img_front', 'img_back', 'img_side_r', 'img_side_l', 'model_glb', }
         if field_name not in allowed:
             raise ValueError(f"Invalid field name {field_name}")
 

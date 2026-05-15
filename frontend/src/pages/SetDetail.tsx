@@ -5,7 +5,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle, Grid3X3, Copy, Download } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Grid3X3, Copy, Download, Box, Pencil, Trash2 } from 'lucide-react';
 import { chessSetsApi, getFileUrl } from '../services/api';
 import { ChessPieceIcon } from '../components/ChessPieceIcon';
 import EditEntityModal from '../components/EditEntityModal';
@@ -149,38 +149,51 @@ export default function SetDetail() {
         Torna alla dashboard
       </button>
 
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-col gap-6">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">{set?.name}</h2>
           {set?.description && (
-            <p className="mt-2 text-gray-600">{set.description}</p>
+            <p className="mt-2 text-gray-600 max-w-3xl">{set.description}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        
+        <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={() => setIsChessboardOpen(true)} 
-            className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors shadow-sm font-medium"
           >
             <Grid3X3 className="w-4 h-4" />
-            Visualizza Scacchiera
+            Visualizza su Scacchiera
           </button>
+          
+          <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+          
+          <button onClick={openEditModal} className="flex items-center gap-2 px-3 py-2.5 text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm text-sm font-medium">
+            <Pencil className="w-4 h-4" />
+            Modifica
+          </button>
+
           <button 
             onClick={handleDuplicateSet} 
-            className="flex items-center gap-2 px-3 py-2 bg-violet-600 text-white rounded hover:bg-violet-700"
+            className="flex items-center gap-2 px-3 py-2.5 text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm text-sm font-medium"
           >
             <Copy className="w-4 h-4" />
             Duplica
           </button>
-          <button onClick={openEditModal} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">Modifica</button>
+          
           <button 
             onClick={handleDownloadSet} 
             disabled={isDownloading}
-            className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-3 py-2.5 text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
             {isDownloading ? `${downloadProgress}%` : 'Scarica'}
           </button>
-          <button onClick={handleDeleteSet} className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700">Elimina</button>
+
+          <button onClick={handleDeleteSet} className="flex items-center gap-2 px-3 py-2.5 text-red-600 bg-white border border-slate-200 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors shadow-sm text-sm font-medium sm:ml-auto">
+            <Trash2 className="w-4 h-4" />
+            Elimina
+          </button>
         </div>
       </div>
       <EditEntityModal
@@ -216,27 +229,34 @@ export default function SetDetail() {
           const hasPreviewImage = favoriteVersion?.img_front;
           const isComplete = favoriteVersion?.is_complete;
           const completionPercentage = favoriteVersion?.completion_percentage || 0;
+          const has3DModel = !!favoriteVersion?.model_glb;
 
           return (
             <button
               key={piece.id}
               onClick={() => navigate(`/pieces/${piece.id}`)}
-              className="group bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all overflow-hidden relative"
+              className="group bg-white rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden relative flex flex-col"
             >
               {/* Preview Image or Icon */}
-              <div className="aspect-square relative">
+              <div className="aspect-square relative flex-grow w-full">
                 {hasPreviewImage ? (
                   <img
                     src={getFileUrl(favoriteVersion.img_front) || ''}
                     alt={label}
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                    <ChessPieceIcon type={piece.type} className="w-16 h-16" />
+                  <div className="w-full h-full flex items-center justify-center bg-gray-50 group-hover:bg-slate-50 transition-colors">
+                    <ChessPieceIcon type={piece.type} className="w-16 h-16 text-slate-300 group-hover:text-slate-400 transition-colors" />
                   </div>
                 )}
                 
+                {has3DModel && (
+                  <div className="absolute top-2 left-2 flex items-center justify-center pointer-events-none" title="Modello 3D pronto">
+                    <Box className="w-5 h-5 text-violet-400 drop-shadow-sm group-hover:text-violet-500 transition-colors" strokeWidth={2.5} />
+                  </div>
+                )}
+
                 {/* Completion Badge */}
                 {favoriteVersion && (
                   <div className="absolute top-2 right-2">
@@ -263,18 +283,16 @@ export default function SetDetail() {
               </div>
               
               {/* Label */}
-              <div className="p-3 bg-white border-t">
-                      <div className="flex items-center justify-center gap-2">
-                        <ChessPieceIcon type={piece.type} className="w-4 h-4" />
-                        <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600">
-                          {piece.name || label}
-                        </span>
-                      </div>
-                      {favoriteVersion && (
-                        <p className="text-xs text-gray-500 text-center mt-1 truncate">
-                          {favoriteVersion.version_name}
-                        </p>
-                      )}
+              <div className="p-3 bg-white flex flex-col items-center justify-center w-full min-h-[72px] z-10 relative">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <ChessPieceIcon type={piece.type} className="w-4 h-4 text-slate-500" />
+                  <span className="text-sm font-medium text-slate-800 group-hover:text-violet-600 transition-colors line-clamp-1">
+                    {piece.name || label}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 text-center w-full truncate h-[16px]">
+                  {favoriteVersion ? favoriteVersion.version_name : <span className="opacity-0">-</span>}
+                </p>
               </div>
             </button>
           );

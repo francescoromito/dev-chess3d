@@ -17,10 +17,9 @@ interface ModelCardProps {
   pieceType?: string; // e.g. "king", "queen", "knight", etc.
   versionId?: number; // used for backend STL conversion
   inlineViewer?: boolean; // render as inline viewer instead of a card with a modal
-  thumbnailUrl?: string; // optional thumbnail to display on the card
 }
 
-export default function ModelCard({ src, label, fileType, onEdit, onRemove, pieceType, versionId, inlineViewer = false, thumbnailUrl }: ModelCardProps) {
+export default function ModelCard({ src, label, fileType, onEdit, onRemove, pieceType, versionId, inlineViewer = false }: ModelCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [rotation, setRotation] = useState({ x: 0, y: 0, z: 0 });

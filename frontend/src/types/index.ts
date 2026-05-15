@@ -44,7 +44,6 @@ export interface PieceVersion {
   img_side_r: string | null;
   img_side_l: string | null;
   model_glb: string | null;
-  model_stl: string | null;
   created_at: string;
   is_favorite: boolean;
   completion_percentage: number;
@@ -64,7 +63,6 @@ export interface CreateVersionRequest {
   img_side_r?: File;
   img_side_l?: File;
   model_glb?: File;
-  model_stl?: File;
 }
 
 // Collections
@@ -85,7 +83,7 @@ export interface CreateCollectionRequest {
 // ---------------------------------------------------------------------------
 
 export type ImageSlotField = 'img_front' | 'img_back' | 'img_side_r' | 'img_side_l';
-export type ModelSlotField = 'model_glb' | 'model_stl';
+export type ModelSlotField = 'model_glb';
 export type SlotField = ImageSlotField | ModelSlotField;
 
 export const SLOT_LABELS: Record<SlotField, string> = {
@@ -94,7 +92,6 @@ export const SLOT_LABELS: Record<SlotField, string> = {
   img_side_r: 'Destra',
   img_side_l: 'Sinistra',
   model_glb: 'Modello 3D',
-  model_stl: 'Stampa 3D',
 };
 
 export interface StagedFile {
@@ -126,3 +123,5 @@ export const STYLE_PRESETS: StylePreset[] = [
   { id: 'crystal',  label: 'Crystal',  emoji: '💎', promptSuffix: 'crystal glass chess piece, transparent with light refractions, elegant and delicate' },
   { id: 'obsidian', label: 'Obsidian', emoji: '⬛', promptSuffix: 'obsidian dark chess piece, glossy volcanic stone, dramatic dark atmosphere' },
 ];
+
+

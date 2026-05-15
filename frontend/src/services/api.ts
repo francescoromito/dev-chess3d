@@ -190,8 +190,7 @@ export const piecesApi = {
     if (data.img_back) formData.append('img_back', data.img_back);
     if (data.img_side_r) formData.append('img_side_r', data.img_side_r);
     if (data.img_side_l) formData.append('img_side_l', data.img_side_l);
-    if (data.model_glb) formData.append('model_glb', data.model_glb);
-    if (data.model_stl) formData.append('model_stl', data.model_stl);
+    if (data.model_glb) formData.append('model_glb', data.model_glb);
 
     const response = await api.post<PieceVersion>(
       `/pieces/${pieceId}/versions`,
@@ -562,3 +561,4 @@ export const aiApi = {
     await api.delete(`/ai/staged/${staged_id}`);
   },
 };
+

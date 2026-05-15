@@ -132,9 +132,6 @@ function getModelInfo(pieces: ChessPieceWithVersions[], pieceType: string): { ur
   if (version.model_glb) {
     return { url: buildUrl(version.model_glb), type: 'glb' };
   }
-  if (version.model_stl) {
-    return { url: buildUrl(version.model_stl), type: 'stl' };
-  }
   return null;
 }
 

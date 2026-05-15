@@ -51,17 +51,6 @@ type GenerationMode = 'text_to_image' | 'edit' | 'multiview' | 'model_3d';
 /** History entry — may be AI-staged (id non-empty) or a local/uploaded image */
 type HistoryEntry = StagedFile & { isLocal?: boolean; localFile?: File };
 
-function detectBaseMode(
-  slot: SlotField,
-  version: PieceVersion,
-): GenerationMode {
-  if (MODEL_SLOTS.includes(slot)) return 'model_3d';
-  const slotValue = version[slot as keyof PieceVersion] as string | null;
-  if (slotValue) return 'edit';
-  if (slot !== 'img_front' && version.img_front) return 'multiview';
-  return 'text_to_image';
-}
-
 const MODE_LABELS: Record<GenerationMode, string> = {
   text_to_image: 'Genera da testo',
   edit: 'Modifica immagine esistente',
@@ -84,7 +73,7 @@ export default function AIStudioModal({ isOpen, onClose, piece, version, default
   const [showPromptInput, setShowPromptInput] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isAnnotating, setIsAnnotating] = useState(false);
+  const [isAnnotating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Staged state
@@ -94,16 +83,6 @@ export default function AIStudioModal({ isOpen, onClose, piece, version, default
   // Derive current slot's history
   const history = slotHistories[selectedSlot] ?? [];
   // Write to the current slot's history
-  const setHistory = useCallback(
-    (updater: HistoryEntry[] | ((prev: HistoryEntry[]) => HistoryEntry[])) => {
-      setSlotHistories((prev) => {
-        const cur = prev[selectedSlot] ?? [];
-        const next = typeof updater === 'function' ? updater(cur) : updater;
-        return { ...prev, [selectedSlot]: next };
-      });
-    },
-    [selectedSlot],
-  );
 
   // Edit queue — when multiple history items are queued, auto-advances as staged clears
   const [editQueue, setEditQueue] = useState<HistoryEntry[]>([]);
@@ -237,8 +216,7 @@ export default function AIStudioModal({ isOpen, onClose, piece, version, default
           img_side_r: 'right',
           img_side_l: 'left',
           img_front: 'back',
-          model_glb: 'back',
-          model_stl: 'back',
+          model_glb: 'back',
         };
         const frontUrl = getFileUrl(version.img_front) ?? undefined;
         result = await aiApi.generateView({
@@ -949,8 +927,8 @@ export default function AIStudioModal({ isOpen, onClose, piece, version, default
                         inlineViewer={true}
                         onEdit={async (file) => {
                           try {
-                            await piecesApi.uploadSlotImage(piece.id, version.id, selectedSlot, file);
-                            queryClient.invalidateQueries({ queryKey: ['pieces'] });
+                            await piecesApi.updateVersion(version.id, { [selectedSlot]: file });
+                            queryClient.invalidateQueries({ queryKey: ['piece', String(piece.id)] });
                           } catch (e) {
                             console.error(e);
                             alert('Errore durante il salvataggio del modello.');
@@ -1098,3 +1076,4 @@ export default function AIStudioModal({ isOpen, onClose, piece, version, default
     </>
   );
 }
+

@@ -54,7 +54,6 @@ class ChessSetService:
                     img_side_r=original_version.img_side_r,
                     img_side_l=original_version.img_side_l,
                     model_glb=original_version.model_glb,
-                    model_stl=original_version.model_stl,
                     is_favorite=original_version.is_favorite
                 )
                 session.add(new_version)

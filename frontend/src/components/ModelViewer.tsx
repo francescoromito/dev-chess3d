@@ -2,7 +2,7 @@
  * 3D Model Viewer Component
  * Renders STL and GLB/GLTF models using React Three Fiber
  */
-import React, { Suspense, useRef, useState, useEffect, useLayoutEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
+import React, { Suspense, useRef, useState, useEffect, useLayoutEffect, forwardRef, useImperativeHandle } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls, Center, Stage, useGLTF } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
@@ -179,21 +179,6 @@ function GLBModel({ url, rotation, groupRef, scale = { x: 1, y: 1, z: 1 }, onDim
         </mesh>
       )}
     </group>
-  );
-}
-
-/**
- * Black base plane component - positioned below the model
- */
-function BasePlane({ sizeCm, modelHeight }: { sizeCm: number; modelHeight: number }) {
-  if (!sizeCm || sizeCm <= 0) return null;
-  // Position plane at the bottom of the model (model is centered, so bottom is at -height/2)
-  const yPosition = -modelHeight / 2 - 0.01;
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, yPosition, 0]} receiveShadow>
-      <planeGeometry args={[sizeCm, sizeCm]} />
-      <meshStandardMaterial color="#111111" />
-    </mesh>
   );
 }
 

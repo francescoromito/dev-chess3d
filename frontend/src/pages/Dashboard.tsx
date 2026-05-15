@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { MouseEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Upload, Calendar, Swords, Loader2 } from 'lucide-react';
+import { Plus, Upload, Calendar, Swords, Loader2, Box } from 'lucide-react';
 import { chessSetsApi, collectionsApi, getFileUrl } from '../services/api';
 import CreateCollectionModal from '../components/CreateCollectionModal';
 import CollectionDetailModal from '../components/CollectionDetailModal';
@@ -51,32 +51,36 @@ function CollectionCard({ col, onOpen, onRefresh }: { col: any; onOpen: () => vo
   };
 
   return (
-    <div className="group bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all text-left overflow-hidden flex flex-col">
-      <div onClick={() => onOpen()} className="p-6 border-b border-gray-200 cursor-pointer">
+    <div className="group bg-white rounded-2xl shadow-sm border-2 border-slate-100 hover:shadow-lg hover:border-violet-300 transition-all text-left overflow-hidden flex flex-col hover:-translate-y-1">
+      <div onClick={() => onOpen()} className="p-6 border-b border-slate-100 cursor-pointer flex flex-col min-h-[140px]">
         {editMode ? (
           <div>
-            <input value={name} onChange={e => setName(e.target.value)} className="w-full px-2 py-1 border rounded mb-2" onClick={e => e.stopPropagation()} />
-            <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full px-2 py-1 border rounded text-sm" rows={2} onClick={e => e.stopPropagation()} />
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg mb-2 focus:ring-2 focus:ring-violet-500 focus:outline-none" onClick={e => e.stopPropagation()} />
+            <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none" rows={2} onClick={e => e.stopPropagation()} />
           </div>
         ) : (
           <>
-            <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 mb-2">{col.name}</h3>
-            {col.description && <p className="text-gray-600 text-sm line-clamp-2">{col.description}</p>}
-            <div className="text-sm text-gray-500 mt-2">ID: {col.id} • {col.sets?.length || 0} scacchiere</div>
+            <h3 className="text-xl font-bold text-slate-900 group-hover:text-violet-600 mb-2 transition-colors line-clamp-1">{col.name}</h3>
+            <p className="text-slate-500 text-sm line-clamp-2 min-h-[40px]">
+              {col.description || <span className="opacity-0">-</span>}
+            </p>
+            <div className="text-sm font-medium text-slate-400 mt-auto pt-3 border-t border-slate-50 flex items-center justify-between">
+              <span>{col.sets?.length || 0} scacchiere</span>
+            </div>
           </>
         )}
       </div>
 
-      <div className="p-3 flex items-center justify-end gap-2">
+      <div className="p-3 bg-slate-50/50 flex items-center justify-end gap-2 flex-grow">
         {editMode ? (
           <>
-            <button onClick={handleSave} disabled={isBusy} className="p-2 rounded bg-green-600 text-white" title="Salva" onMouseDown={e => e.stopPropagation()}><CheckIcon className="w-4 h-4" /></button>
-            <button onClick={(e) => { e.stopPropagation(); setEditMode(false); setName(col.name); setDescription(col.description); }} className="p-2 rounded border" title="Annulla"><XIcon className="w-4 h-4" /></button>
+            <button onClick={handleSave} disabled={isBusy} className="p-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors" title="Salva" onMouseDown={e => e.stopPropagation()}><CheckIcon className="w-4 h-4" /></button>
+            <button onClick={(e) => { e.stopPropagation(); setEditMode(false); setName(col.name); setDescription(col.description); }} className="p-2 rounded-lg border-2 border-slate-200 hover:bg-slate-100 transition-colors" title="Annulla"><XIcon className="w-4 h-4 text-slate-600" /></button>
           </>
         ) : (
           <>
-            <button onClick={(e) => { e.stopPropagation(); setEditMode(true); }} className="p-2 rounded hover:bg-gray-100" title="Modifica"><EditIcon className="w-4 h-4" /></button>
-            <button onClick={handleDelete} className="p-2 rounded hover:bg-red-50 text-red-600" title="Elimina" onMouseDown={e => e.stopPropagation()}><TrashIcon className="w-4 h-4" /></button>
+            <button onClick={(e) => { e.stopPropagation(); setEditMode(true); }} className="p-2 text-slate-400 rounded-lg hover:bg-violet-100 hover:text-violet-600 transition-colors" title="Modifica"><EditIcon className="w-4 h-4" /></button>
+            <button onClick={handleDelete} className="p-2 text-slate-400 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors" title="Elimina" onMouseDown={e => e.stopPropagation()}><TrashIcon className="w-4 h-4" /></button>
           </>
         )}
       </div>
@@ -260,14 +264,14 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-6 flex items-end justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">Le tue Scacchiere</h2>
-          <p className="mt-2 text-gray-600">Gestisci i design delle tue scacchiere e i modelli 3D</p>
+          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Le tue Scacchiere</h2>
+          <p className="mt-2 text-slate-500 font-medium">Gestisci i design delle tue scacchiere e i modelli 3D</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setActiveTab('sets')} className={`px-3 py-1 rounded ${activeTab === 'sets' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>Scacchiere</button>
-          <button onClick={() => setActiveTab('collections')} className={`px-3 py-1 rounded ${activeTab === 'collections' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>Collezioni</button>
+        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+          <button onClick={() => setActiveTab('sets')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'sets' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Scacchiere</button>
+          <button onClick={() => setActiveTab('collections')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'collections' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Collezioni</button>
         </div>
       </div>
 
@@ -276,11 +280,11 @@ export default function Dashboard() {
           <>
             <button
               onClick={() => setIsCollectionModalOpen(true)}
-              className="group relative bg-white p-6 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-500 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
+              className="group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-violet-500 hover:bg-violet-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
             >
-              <Plus className="w-12 h-12 text-gray-400 group-hover:text-blue-500 mb-3" />
-              <h3 className="text-lg font-semibold text-gray-700 group-hover:text-blue-600">Crea Collezione</h3>
-              <p className="text-sm text-gray-500 mt-1">Raggruppa più scacchiere</p>
+              <Plus className="w-10 h-10 text-slate-400 group-hover:text-violet-500 mb-3 transition-colors" />
+              <h3 className="text-lg font-semibold text-slate-700 group-hover:text-violet-600 transition-colors">Crea Collezione</h3>
+              <p className="text-sm text-slate-500 mt-1">Raggruppa più scacchiere</p>
             </button>
 
             {collections.map(col => (
@@ -291,36 +295,36 @@ export default function Dashboard() {
           <>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="group relative bg-white p-6 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-500 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
+              className="group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-violet-500 hover:bg-violet-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
             >
-              <Plus className="w-12 h-12 text-gray-400 group-hover:text-blue-500 mb-3" />
-              <h3 className="text-lg font-semibold text-gray-700 group-hover:text-blue-600">Crea Scacchiera</h3>
-              <p className="text-sm text-gray-500 mt-1">Nuovo progetto</p>
+              <Plus className="w-10 h-10 text-slate-400 group-hover:text-violet-500 mb-3 transition-colors" />
+              <h3 className="text-lg font-semibold text-slate-700 group-hover:text-violet-600 transition-colors">Crea Scacchiera</h3>
+              <p className="text-sm text-slate-500 mt-1">Nuovo progetto</p>
             </button>
 
             <button
               onClick={() => navigate('/game/setup')}
-              className="group relative bg-white p-6 rounded-lg border-2 border-dashed border-gray-300 hover:border-green-500 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
+              className="group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-teal-500 hover:bg-teal-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
             >
-              <Swords className="w-12 h-12 text-gray-400 group-hover:text-green-500 mb-3" />
-              <h3 className="text-lg font-semibold text-gray-700 group-hover:text-green-600">Gioca 1 vs 1</h3>
-              <p className="text-sm text-gray-500 mt-1">Partita Locale</p>
+              <Swords className="w-10 h-10 text-slate-400 group-hover:text-teal-500 mb-3 transition-colors" />
+              <h3 className="text-lg font-semibold text-slate-700 group-hover:text-teal-600 transition-colors">Gioca 1 vs 1</h3>
+              <p className="text-sm text-slate-500 mt-1">Partita Locale</p>
             </button>
 
             <button
               onClick={handleImportSetClick}
               disabled={isImporting}
-              className="group relative bg-white p-6 rounded-lg border-2 border-dashed border-gray-300 hover:border-purple-500 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-indigo-500 hover:bg-indigo-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isImporting ? (
-                <Loader2 className="w-12 h-12 text-purple-500 mb-3 animate-spin" />
+                <Loader2 className="w-10 h-10 text-indigo-500 mb-3 animate-spin" />
               ) : (
-                <Upload className="w-12 h-12 text-gray-400 group-hover:text-purple-500 mb-3" />
+                <Upload className="w-10 h-10 text-slate-400 group-hover:text-indigo-500 mb-3 transition-colors" />
               )}
-              <h3 className="text-lg font-semibold text-gray-700 group-hover:text-purple-600">
+              <h3 className="text-lg font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">
                 {isImporting ? 'Importazione...' : 'Carica Scacchiera'}
               </h3>
-              <p className="text-sm text-gray-500 mt-1">Importa da ZIP</p>
+              <p className="text-sm text-slate-500 mt-1">Importa da ZIP</p>
             </button>
             <input
               ref={importInputRef}
@@ -333,10 +337,10 @@ export default function Dashboard() {
             {isLoading ? (
               <>
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 min-h-[200px] animate-pulse">
-                    <div className="h-6 bg-gray-200 rounded w-3/4 mb-3"></div>
-                    <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                  <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border-2 border-slate-100 min-h-[200px] animate-pulse">
+                    <div className="h-6 bg-slate-200 rounded w-3/4 mb-3"></div>
+                    <div className="h-4 bg-slate-200 rounded w-full mb-2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-2/3"></div>
                   </div>
                 ))}
               </>
@@ -345,34 +349,44 @@ export default function Dashboard() {
                 <button
                   key={set.id}
                   onClick={() => navigate(`/sets/${set.id}`)}
-                  className="group bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all text-left overflow-hidden flex flex-col"
+                  className="group bg-white rounded-2xl shadow-sm border-2 border-slate-100 hover:shadow-lg hover:border-violet-300 transition-all text-left overflow-hidden flex flex-col hover:-translate-y-1"
                 >
-                  <div className="p-6 border-b border-gray-200">
-                    <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 mb-2">{set.name}</h3>
-                    {set.description && <p className="text-gray-600 text-sm line-clamp-2">{set.description}</p>}
-                    <div className="flex items-center text-sm text-gray-500 mt-3"><Calendar className="w-4 h-4 mr-1" />{new Date(set.created_at).toLocaleDateString('it-IT')}</div>
+                  <div className="p-6 border-b border-slate-100 flex flex-col min-h-[140px]">
+                    <h3 className="text-xl font-bold text-slate-900 group-hover:text-violet-600 mb-2 transition-colors line-clamp-1">{set.name}</h3>
+                    <p className="text-slate-500 text-sm line-clamp-2 min-h-[40px]">
+                      {set.description || <span className="opacity-0">-</span>}
+                    </p>
+                    <div className="flex items-center text-sm text-slate-400 mt-auto pt-2"><Calendar className="w-4 h-4 mr-1" />{new Date(set.created_at).toLocaleDateString('it-IT')}</div>
                   </div>
 
-                  <div className="p-4 grid grid-cols-3 grid-rows-2 gap-2 flex-grow bg-gray-50">
+                  <div className="p-4 grid grid-cols-3 grid-rows-2 gap-3 flex-grow bg-slate-50/50">
                     {set.pieces.map((piece) => {
                       const favoriteVersion = getFavoriteVersion(piece.versions);
                       const imageSrc = favoriteVersion?.img_front ? getFileUrl(favoriteVersion.img_front) : null;
                       const completionPercentage = favoriteVersion?.completion_percentage || 0;
                       const isComplete = favoriteVersion?.is_complete || false;
+                      const has3DModel = !!favoriteVersion?.model_glb;
 
                       return (
-                        <div key={piece.id} className="aspect-square bg-white rounded border border-gray-200 overflow-hidden flex items-center justify-center relative group">
+                        <div key={piece.id} className="aspect-square bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex items-center justify-center relative group-hover:border-violet-200 transition-colors">
                           <PieceThumbnail imageSrc={imageSrc} pieceType={piece.type} />
+
+                          {has3DModel && (
+                            <div className="absolute top-1.5 left-1.5 flex items-center justify-center pointer-events-none" title="Modello 3D pronto">
+                              <Box className="w-4 h-4 text-violet-400 drop-shadow-sm group-hover:text-violet-500 transition-colors" strokeWidth={2.5} />
+                            </div>
+                          )}
 
                           <div className="absolute bottom-1 right-1">
                             {isComplete ? (
-                              <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
-                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                              <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shadow-sm">
+                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                               </div>
                             ) : (
-                              <svg className="w-12 h-12" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="35" fill="none" stroke="#e5e7eb" strokeWidth="10" />
-                                <circle cx="50" cy="50" r="35" fill="none" stroke={completionPercentage > 50 ? "#fbbf24" : "#f97316"} strokeWidth="10" strokeDasharray={`${2 * Math.PI * 35}`} strokeDashoffset={`${2 * Math.PI * 35 * (1 - completionPercentage / 100)}`} strokeLinecap="round" style={{ transform: 'rotate(-90deg)', transformOrigin: '50px 50px', transition: 'stroke-dashoffset 0.3s ease', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
+                              <svg className="w-8 h-8" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="35" fill="white" />
+                                <circle cx="50" cy="50" r="35" fill="none" stroke="#f1f5f9" strokeWidth="12" />
+                                <circle cx="50" cy="50" r="35" fill="none" stroke={completionPercentage > 50 ? "#8b5cf6" : "#c4b5fd"} strokeWidth="12" strokeDasharray={`${2 * Math.PI * 35}`} strokeDashoffset={`${2 * Math.PI * 35 * (1 - completionPercentage / 100)}`} strokeLinecap="round" style={{ transform: 'rotate(-90deg)', transformOrigin: '50px 50px', transition: 'stroke-dashoffset 0.3s ease' }} />
                               </svg>
                             )}
                           </div>

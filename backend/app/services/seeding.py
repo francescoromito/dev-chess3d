@@ -444,7 +444,6 @@ def restore_missing_uploads(session: Session) -> None:
                 if models_dir.exists():
                     model_mappings = {
                         'model_glb': ('.glb', version.model_glb),
-                        'model_stl': ('.stl', version.model_stl),
                     }
                     for _attr, (ext, db_path) in model_mappings.items():
                         if not db_path:

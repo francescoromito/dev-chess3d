@@ -142,7 +142,6 @@ class PieceVersionBase(SQLModel):
     img_side_r: Optional[str] = Field(default=None, max_length=500)
     img_side_l: Optional[str] = Field(default=None, max_length=500)
     model_glb: Optional[str] = Field(default=None, max_length=500)
-    model_stl: Optional[str] = Field(default=None, max_length=500)
     is_favorite: bool = Field(default=False)
 
 

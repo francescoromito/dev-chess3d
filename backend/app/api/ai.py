@@ -79,7 +79,7 @@ class Generate3DRequest(BaseModel):
 
 class ConfirmStagedRequest(BaseModel):
     version_id: int
-    field_name: str  # img_front | img_back | img_side_r | img_side_l | model_glb | model_stl
+    field_name: str  # img_front | img_back | img_side_r | img_side_l | model_glb
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +217,7 @@ async def confirm_staged(
     piece_dir.mkdir(parents=True, exist_ok=True)
 
     field = body.field_name
-    ext = ".glb" if field == "model_glb" else ".stl" if field == "model_stl" else ".jpg"
+    ext = ".glb" if field == "model_glb" else ".jpg"
     file_id = str(uuid.uuid4())[:8]
     filename = f"{field}_{file_id}{ext}"
     file_path = piece_dir / filename

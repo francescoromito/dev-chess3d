@@ -81,7 +81,6 @@ export default function PieceDetail() {
     },
     onSuccess: (result) => {
       console.log('updateVersionMutation success - full result:', JSON.stringify(result, null, 2));
-      console.log('model_stl path:', result?.model_stl);
       queryClient.invalidateQueries({ queryKey: ['piece', pieceId] });
     },
     onError: (error) => {
@@ -620,3 +619,4 @@ export default function PieceDetail() {
     </div>
   );
 }
+

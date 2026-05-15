@@ -7,7 +7,6 @@ import { useState, useCallback } from 'react';
 import {
   X,
   Sparkles,
-  RefreshCw,
   Check,
   Trash2,
   ChevronDown,
@@ -99,7 +98,11 @@ export default function AIGenerateImageModal({
         });
       } else if (mode === 'edit') {
         if (staged) {
-          result = await aiApi.editImage(staged.id, buildPrompt());
+          if (buildPrompt()) {
+            result = await aiApi.editImage({ staged_id: staged.id, prompt: buildPrompt()! });
+          } else {
+            result = await aiApi.editImage({ staged_id: staged.id, prompt: "" }); // Fallback if undefined
+          }
         } else {
           // First edit iteration: generate with context
           result = await aiApi.generateImage({

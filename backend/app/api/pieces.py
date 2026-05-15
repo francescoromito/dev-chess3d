@@ -171,7 +171,6 @@ async def create_piece_version(
     img_side_r: Optional[UploadFile] = File(None),
     img_side_l: Optional[UploadFile] = File(None),
     model_glb: Optional[UploadFile] = File(None),
-    model_stl: Optional[UploadFile] = File(None),
     session: Session = Depends(get_session)
 ) -> PieceVersionRead:
     """
@@ -198,7 +197,6 @@ async def create_piece_version(
             img_side_r=img_side_r,
             img_side_l=img_side_l,
             model_glb=model_glb,
-            model_stl=model_stl
         )
         
         return PieceVersionRead.model_validate(db_version)
@@ -482,7 +480,6 @@ async def update_piece_version(
     img_side_r: Optional[UploadFile] = File(None),
     img_side_l: Optional[UploadFile] = File(None),
     model_glb: Optional[UploadFile] = File(None),
-    model_stl: Optional[UploadFile] = File(None),
     session: Session = Depends(get_session)
 ) -> PieceVersionRead:
     """
@@ -507,7 +504,6 @@ async def update_piece_version(
             img_side_r=img_side_r,
             img_side_l=img_side_l,
             model_glb=model_glb,
-            model_stl=model_stl
         )
         
         return PieceVersionRead.model_validate(db_version)
@@ -670,7 +666,6 @@ async def import_version_from_zip(
                 img_side_r=img_side_r,
                 img_side_l=img_side_l,
                 model_glb=model_glb,
-                model_stl=model_stl
             )
             
             return PieceVersionRead.model_validate(db_version)

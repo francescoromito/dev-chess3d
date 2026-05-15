@@ -22,7 +22,7 @@ export interface EditVersionData {
   img_side_r?: File;
   img_side_l?: File;
   model_glb?: File;
-  model_stl?: File;
+  
 }
 
 type ImageField = 'img_front' | 'img_back' | 'img_side_r' | 'img_side_l';
@@ -37,7 +37,7 @@ export default function EditVersionModal({
 }: EditVersionModalProps) {
   const [versionName, setVersionName] = useState(version.version_name);
   const [newImages, setNewImages] = useState<Partial<Record<ImageField, File>>>({});
-  const [newModels, setNewModels] = useState<{ model_glb?: File; model_stl?: File }>({});
+  const [newModels, setNewModels] = useState<{ model_glb?: File;  }>({});
   const [previewUrls, setPreviewUrls] = useState<Partial<Record<ImageField, string>>>({});
   
   const fileInputRefs = {
@@ -46,7 +46,7 @@ export default function EditVersionModal({
     img_side_r: useRef<HTMLInputElement>(null),
     img_side_l: useRef<HTMLInputElement>(null),
     model_glb: useRef<HTMLInputElement>(null),
-    model_stl: useRef<HTMLInputElement>(null),
+    
   };
 
   const imageLabels: Record<ImageField, string> = {
@@ -96,7 +96,7 @@ export default function EditVersionModal({
     });
     
     if (newModels.model_glb) data.model_glb = newModels.model_glb;
-    if (newModels.model_stl) data.model_stl = newModels.model_stl;
+    
     
     // Only submit if there are changes
     if (Object.keys(data).length > 0) {
@@ -248,32 +248,6 @@ export default function EditVersionModal({
                     <Upload className="w-5 h-5 text-gray-500" />
                     <span className="text-sm text-gray-600">
                       {newModels.model_glb?.name || (version.model_glb ? 'Modello GLB presente' : 'Carica GLB')}
-                    </span>
-                  </button>
-                </div>
-
-                {/* STL Model */}
-                <div>
-                  <input
-                    ref={fileInputRefs.model_stl}
-                    type="file"
-                    accept=".stl"
-                    onChange={(e) => setNewModels((prev) => ({ ...prev, model_stl: e.target.files?.[0] }))}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRefs.model_stl.current?.click()}
-                    className={`
-                      w-full py-3 px-4 border-2 border-dashed rounded-lg
-                      flex flex-col items-center justify-center gap-2
-                      transition-all hover:border-blue-400 hover:bg-blue-50
-                      ${version.model_stl || newModels.model_stl ? 'border-green-300 bg-green-50' : 'border-gray-300'}
-                    `}
-                  >
-                    <Upload className="w-5 h-5 text-gray-500" />
-                    <span className="text-sm text-gray-600">
-                      {newModels.model_stl?.name || (version.model_stl ? 'Modello STL presente' : 'Carica STL')}
                     </span>
                   </button>
                 </div>

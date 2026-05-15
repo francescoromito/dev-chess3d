@@ -78,24 +78,23 @@ function createChessboardTexture(): THREE.CanvasTexture {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-function getModelInfo(pieces: ChessPieceWithVersions[], pieceType: string): { url: string; type: 'glb' | 'stl' } | null {
-  const piece = pieces.find(p => p.type.toLowerCase() === pieceType.toLowerCase());
-  if (!piece || piece.versions.length === 0) return null;
-  const version = piece.versions.find(v => v.is_favorite) || piece.versions[0];
-  
-  const buildUrl = (path: string): string => {
-    if (path.startsWith('http')) return path;
-    if (path.startsWith('/uploads/')) return `${API_BASE_URL}${path}`;
-    if (path.startsWith('/')) return `${API_BASE_URL}/uploads${path}`;
-    if (path.startsWith('uploads/')) return `${API_BASE_URL}/${path}`;
-    return `${API_BASE_URL}/uploads/${path}`;
-  };
-  
-  if (version.model_glb) return { url: buildUrl(version.model_glb), type: 'glb' };
-  if (version.model_stl) return { url: buildUrl(version.model_stl), type: 'stl' };
-  return null;
-}
 
+function getModelInfo(pieces: ChessPieceWithVersions[], pieceType: string): { url: string; type: 'glb' } | null {
+    const piece = pieces.find(p => p.type.toLowerCase() === pieceType.toLowerCase());
+    if (!piece || piece.versions.length === 0) return null;
+    const version = piece.versions.find(v => v.is_favorite) || piece.versions[0];
+    
+    const buildUrl = (path: string): string => {
+      if (path.startsWith('http')) return path;
+      if (path.startsWith('/uploads/')) return `${API_BASE_URL}${path}`;
+      if (path.startsWith('/')) return `${API_BASE_URL}/uploads${path}`;
+      if (path.startsWith('uploads/')) return `${API_BASE_URL}/${path}`;
+      return `${API_BASE_URL}/uploads/${path}`;
+    };
+    
+    if (version.model_glb) return { url: buildUrl(version.model_glb), type: 'glb' as const };
+    return null;
+}
 function squareToPosition(file: string, rank: number, squareSizeCm: number): [number, number, number] {
   const fileIndex = file.charCodeAt(0) - 'a'.charCodeAt(0);
   const rankIndex = rank - 1;
@@ -1293,3 +1292,6 @@ export default function PlayableChessboard({ whitePieces, blackPieces, squareSiz
     </div>
   );
 }
+
+
+
