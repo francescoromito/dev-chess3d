@@ -512,7 +512,6 @@ async def import_chess_set_from_zip(
                     img_side_r=img_side_r,
                     img_side_l=img_side_l,
                     model_glb=model_glb,
-                    model_stl=model_stl
                 )
             
             session.refresh(db_set)

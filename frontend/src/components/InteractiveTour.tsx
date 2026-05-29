@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
-import { X, ChevronRight, Sparkles } from 'lucide-react';
+import { X, ChevronRight } from 'lucide-react';
+import questionmarkIcon from '../assets/questionmark.svg';
 
 interface TourStep {
   target: string;        // CSS selector
@@ -392,13 +393,13 @@ export function TourFloatingButton() {
       }}
       title="Riavvia il tutorial"
     >
-      <Sparkles className="w-5 h-5 flex-shrink-0" />
       <span
         className="text-sm font-semibold overflow-hidden whitespace-nowrap transition-all duration-200"
         style={{ maxWidth: hovered ? 120 : 0, opacity: hovered ? 1 : 0 }}
       >
-        Tutorial
+        Serve aiuto
       </span>
+      <img src={questionmarkIcon} alt="?" className="w-5 h-5 flex-shrink-0" />
     </button>,
     document.body
   );
