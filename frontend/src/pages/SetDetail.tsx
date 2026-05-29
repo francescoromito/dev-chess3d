@@ -235,7 +235,7 @@ export default function SetDetail() {
             <button
               key={piece.id}
               onClick={() => navigate(`/pieces/${piece.id}`)}
-              className="group bg-white rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden relative flex flex-col"
+              className={`tour-piece-${piece.type} group bg-white rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden relative flex flex-col`}
             >
               {/* Preview Image or Icon */}
               <div className="aspect-square relative flex-grow w-full">

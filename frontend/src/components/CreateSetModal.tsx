@@ -39,7 +39,7 @@ export default function CreateSetModal({
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="tour-modal-cancel text-gray-400 hover:text-gray-600"
             disabled={isLoading}
           >
             <X className="w-6 h-6" />
@@ -57,7 +57,7 @@ export default function CreateSetModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="tour-set-name-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Es. Set Classico"
               disabled={isLoading}
             />
@@ -72,7 +72,7 @@ export default function CreateSetModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="tour-set-desc-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               placeholder="Aggiungi una descrizione del set..."
               disabled={isLoading}
             />
@@ -82,14 +82,14 @@ export default function CreateSetModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="tour-modal-cancel flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               disabled={isLoading}
             >
               Annulla
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="tour-create-set-submit flex-1 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading || !name.trim()}
             >
               {isLoading ? 'Creazione...' : 'Crea Set'}

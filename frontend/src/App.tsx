@@ -8,6 +8,7 @@ import SetDetail from './pages/SetDetail';
 import PieceDetail from './pages/PieceDetail';
 import GameSetup from './pages/GameSetup';
 import GamePlay from './pages/GamePlay';
+import { InteractiveTour, TourFloatingButton } from './components/InteractiveTour';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -41,6 +42,9 @@ function App() {
               <Route path="/game/play" element={<GamePlay />} />
             </Routes>
           </main>
+          
+          <InteractiveTour />
+          <TourFloatingButton />
         </div>
       </BrowserRouter>
     </QueryClientProvider>

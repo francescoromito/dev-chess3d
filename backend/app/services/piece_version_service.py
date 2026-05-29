@@ -107,7 +107,17 @@ class PieceVersionService:
                 model_glb, piece_id, "model_glb"
             )
         
-        
+        # Create the version DB object with all file paths
+        db_version = PieceVersion(
+            piece_id=piece_id,
+            version_name=version_data.version_name,
+            img_front=file_paths["img_front"],
+            img_back=file_paths["img_back"],
+            img_side_r=file_paths["img_side_r"],
+            img_side_l=file_paths["img_side_l"],
+            model_glb=file_paths["model_glb"],
+        )
+
         session.add(db_version)
         session.commit()
         session.refresh(db_version)

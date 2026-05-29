@@ -376,7 +376,7 @@ export default function Dashboard() {
           <>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-violet-500 hover:bg-violet-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
+              className="tour-create-set-card group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-violet-500 hover:bg-violet-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
             >
               <Plus className="w-10 h-10 text-slate-400 group-hover:text-violet-500 mb-3 transition-colors" />
               <h3 className="text-lg font-semibold text-slate-700 group-hover:text-violet-600 transition-colors">Crea Scacchiera</h3>
