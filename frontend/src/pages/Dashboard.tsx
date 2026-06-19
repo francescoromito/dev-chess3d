@@ -7,7 +7,7 @@ import type { MouseEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Upload, Calendar, Swords, Loader2, Box } from 'lucide-react';
-import { chessSetsApi, collectionsApi, adminApi, getFileUrl } from '../services/api';
+import { chessSetsApi, collectionsApi, getFileUrl } from '../services/api';
 import CreateCollectionModal from '../components/CreateCollectionModal';
 import CollectionDetailModal from '../components/CollectionDetailModal';
 import { ChessPieceIcon } from '../components/ChessPieceIcon';
@@ -89,7 +89,7 @@ function CollectionCard({ col, onOpen, onRefresh }: { col: any; onOpen: () => vo
 }
 
 // Set card component with delete button
-function SetCard({ set, onDelete, onNavigate }: { set: any; onDelete: () => void; onNavigate: () => void }) {
+function SetCard({ set, onDelete, onNavigate, className = "" }: { set: any; onDelete: () => void; onNavigate: () => void; className?: string }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async (e: MouseEvent) => {
@@ -107,7 +107,7 @@ function SetCard({ set, onDelete, onNavigate }: { set: any; onDelete: () => void
   };
 
   return (
-    <div className="group bg-white rounded-2xl shadow-sm border-2 border-slate-100 hover:shadow-lg hover:border-violet-300 transition-all text-left overflow-hidden flex flex-col hover:-translate-y-1 relative">
+    <div className={`group bg-white rounded-2xl shadow-sm border-2 border-slate-100 hover:shadow-lg hover:border-violet-300 transition-all text-left overflow-hidden flex flex-col hover:-translate-y-1 relative ${className}`}>
       {!set.is_seeded && (
         <button
           onClick={handleDelete}
@@ -350,8 +350,8 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-            <button onClick={() => setActiveTab('sets')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'sets' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Scacchiere</button>
-            <button onClick={() => setActiveTab('collections')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'collections' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Collezioni</button>
+            <button onClick={() => setActiveTab('sets')} className={`tour-tab-sets px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'sets' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Scacchiere</button>
+            <button onClick={() => setActiveTab('collections')} className={`tour-tab-collections px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeTab === 'collections' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Collezioni</button>
           </div>
         </div>
       </div>
@@ -361,7 +361,7 @@ export default function Dashboard() {
           <>
             <button
               onClick={() => setIsCollectionModalOpen(true)}
-              className="group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-violet-500 hover:bg-violet-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
+              className="tour-create-collection-card group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-violet-500 hover:bg-violet-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
             >
               <Plus className="w-10 h-10 text-slate-400 group-hover:text-violet-500 mb-3 transition-colors" />
               <h3 className="text-lg font-semibold text-slate-700 group-hover:text-violet-600 transition-colors">Crea Collezione</h3>
@@ -385,7 +385,7 @@ export default function Dashboard() {
 
             <button
               onClick={() => navigate('/game/setup')}
-              className="group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-teal-500 hover:bg-teal-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
+              className="tour-play-1v1-card group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-teal-500 hover:bg-teal-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer"
             >
               <Swords className="w-10 h-10 text-slate-400 group-hover:text-teal-500 mb-3 transition-colors" />
               <h3 className="text-lg font-semibold text-slate-700 group-hover:text-teal-600 transition-colors">Gioca 1 vs 1</h3>
@@ -395,7 +395,7 @@ export default function Dashboard() {
             <button
               onClick={handleImportSetClick}
               disabled={isImporting}
-              className="group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-indigo-500 hover:bg-indigo-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="tour-import-set-card group relative bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-indigo-500 hover:bg-indigo-50/30 transition-colors flex flex-col items-center justify-center min-h-[200px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isImporting ? (
                 <Loader2 className="w-10 h-10 text-indigo-500 mb-3 animate-spin" />
@@ -426,10 +426,11 @@ export default function Dashboard() {
                 ))}
               </>
             ) : (
-              sets?.map((set) => (
+              sets?.map((set, index) => (
                 <SetCard
                   key={set.id}
                   set={set}
+                  className={index === 0 ? 'tour-existing-set-card' : ''}
                   onNavigate={() => navigate(`/sets/${set.id}`)}
                   onDelete={() => queryClient.invalidateQueries({ queryKey: ['chess-sets'] })}
                 />

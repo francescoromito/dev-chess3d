@@ -12,17 +12,19 @@ interface TourStep {
   spotlightClicks?: boolean; // allow clicking through
   waitForNext?: boolean;     // don't show "avanti", wait for user action
   blockOutsideClicks?: boolean; // default true: 4-panel overlay blocks clicks outside spotlight
+  skipIfNotFound?: boolean;  // skip this step if the target is not currently in the DOM
+  isFancyArrow?: boolean;    // use sketchy decorative arrow
 }
 
 const DASHBOARD_STEPS: TourStep[] = [
   {
     target: '.tour-create-set-card',
-    title: 'Crea la tua prima Scacchiera',
-    content: 'Clicca qui per aprire il pannello di creazione.',
+    title: 'Crea Scacchiera',
+    content: 'Clicca qui per iniziare il tuo progetto da zero. Oppure lancia una partita veloce o importa un set qui a fianco!',
     placement: 'bottom',
     spotlightClicks: true,
     waitForNext: true,
-    blockOutsideClicks: true,
+    blockOutsideClicks: false, // crucial so they can click the other cards!
   },
   {
     target: '.tour-set-name-input',
@@ -40,7 +42,37 @@ const DASHBOARD_STEPS: TourStep[] = [
     placement: 'top',
     spotlightClicks: true,
     waitForNext: true,         // avanza solo al click su Crea Set
-    blockOutsideClicks: false, // permette di cliccare il pulsante Crea Set
+    blockOutsideClicks: false, // permette di cliccare il pubblicazione/pulsante Crea Set
+  },
+];
+
+const COLLECTIONS_STEPS: TourStep[] = [
+  {
+    target: '.tour-create-collection-card',
+    title: 'Crea Collezione',
+    content: 'Clicca qui per iniziare a raggruppare e organizzare più scacchiere insieme.',
+    placement: 'bottom',
+    spotlightClicks: true,
+    waitForNext: true,
+    blockOutsideClicks: false,
+  },
+  {
+    target: '.tour-coll-name-input',
+    title: 'Dai un nome alla collezione',
+    content: 'Scrivi il nome per la tua collezione. Clicca Avanti quando hai finito, oppure clicca direttamente nel campo descrizione.',
+    placement: 'bottom',
+    spotlightClicks: true,
+    waitForNext: false,
+    blockOutsideClicks: false,
+  },
+  {
+    target: '.tour-coll-desc-input',
+    title: 'Completa la collezione',
+    content: 'Puoi aggiungere una descrizione opzionale e selezionare quali scacchiere associare. Infine premi "Crea Collezione".',
+    placement: 'top',
+    spotlightClicks: true,
+    waitForNext: true,
+    blockOutsideClicks: false,
   },
 ];
 
@@ -74,17 +106,67 @@ function TourTooltip({
   const [visible, setVisible] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
+  // States for secondary targets to show fancy secondary pointers
+  const [existingSetRect, setExistingSetRect] = useState<DOMRect | null>(null);
+  const [play1v1Rect, setPlay1v1Rect] = useState<DOMRect | null>(null);
+  const [importSetRect, setImportSetRect] = useState<DOMRect | null>(null);
+  const [setsTabRect, setSetsTabRect] = useState<DOMRect | null>(null);
+  const [collectionsTabRect, setCollectionsTabRect] = useState<DOMRect | null>(null);
+
   useLayoutEffect(() => {
     setVisible(false);
-    const el = document.querySelector(step.target) as HTMLElement | null;
-    if (!el) return;
+    setExistingSetRect(null);
+    setPlay1v1Rect(null);
+    setImportSetRect(null);
+    setSetsTabRect(null);
+    setCollectionsTabRect(null);
 
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => {
-      const fresh = el.getBoundingClientRect();
-      setRect(fresh);
-      setVisible(true);
-    }, 350);
+    let activeRetry = true;
+    let retryTimeout: any = null;
+    let retryCount = 0;
+
+    const tryResolve = () => {
+      const el = document.querySelector(step.target) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          if (!activeRetry) return;
+          const fresh = el.getBoundingClientRect();
+          setRect(fresh);
+
+          if (step.target === '.tour-create-set-card' || step.target === '.tour-create-collection-card') {
+            const existEl = document.querySelector('.tour-existing-set-card') as HTMLElement | null;
+            if (existEl) setExistingSetRect(existEl.getBoundingClientRect());
+
+            const playEl = document.querySelector('.tour-play-1v1-card') as HTMLElement | null;
+            if (playEl) setPlay1v1Rect(playEl.getBoundingClientRect());
+
+            const importEl = document.querySelector('.tour-import-set-card') as HTMLElement | null;
+            if (importEl) setImportSetRect(importEl.getBoundingClientRect());
+
+            const setsTabEl = document.querySelector('.tour-tab-sets') as HTMLElement | null;
+            if (setsTabEl) setSetsTabRect(setsTabEl.getBoundingClientRect());
+
+            const collTabEl = document.querySelector('.tour-tab-collections') as HTMLElement | null;
+            if (collTabEl) setCollectionsTabRect(collTabEl.getBoundingClientRect());
+          }
+
+          setVisible(true);
+        }, 350);
+      } else {
+        if (retryCount < 15) {
+          retryCount++;
+          retryTimeout = setTimeout(tryResolve, 50);
+        }
+      }
+    };
+
+    tryResolve();
+
+    return () => {
+      activeRetry = false;
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
   }, [step.target]);
 
   // Recompute position on window resize
@@ -93,6 +175,23 @@ function TourTooltip({
     const handleResize = () => {
       const el = document.querySelector(step.target) as HTMLElement | null;
       if (el) setRect(el.getBoundingClientRect());
+
+      if (step.target === '.tour-create-set-card' || step.target === '.tour-create-collection-card') {
+        const existEl = document.querySelector('.tour-existing-set-card') as HTMLElement | null;
+        if (existEl) setExistingSetRect(existEl.getBoundingClientRect());
+
+        const playEl = document.querySelector('.tour-play-1v1-card') as HTMLElement | null;
+        if (playEl) setPlay1v1Rect(playEl.getBoundingClientRect());
+
+        const importEl = document.querySelector('.tour-import-set-card') as HTMLElement | null;
+        if (importEl) setImportSetRect(importEl.getBoundingClientRect());
+
+        const setsTabEl = document.querySelector('.tour-tab-sets') as HTMLElement | null;
+        if (setsTabEl) setSetsTabRect(setsTabEl.getBoundingClientRect());
+
+        const collTabEl = document.querySelector('.tour-tab-collections') as HTMLElement | null;
+        if (collTabEl) setCollectionsTabRect(collTabEl.getBoundingClientRect());
+      }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -161,8 +260,12 @@ function TourTooltip({
           width: sR - sL,
           height: sB - sT,
           borderRadius: 10,
-          border: '2px solid rgba(139,92,246,0.85)',
-          boxShadow: '0 0 12px rgba(139,92,246,0.4)',
+          border: step.isFancyArrow
+            ? '2.5px dashed rgba(139,92,246,0.75)'
+            : '2px solid rgba(139,92,246,0.85)',
+          boxShadow: step.isFancyArrow
+            ? '0 0 8px rgba(139,92,246,0.25)'
+            : '0 0 12px rgba(139,92,246,0.4)',
           pointerEvents: step.spotlightClicks ? 'none' : 'auto',
         }}
       />
@@ -206,13 +309,208 @@ function TourTooltip({
           )}
         </div>
         {/* Arrow */}
-        {placement === 'bottom' && (
+        {!step.isFancyArrow && placement === 'bottom' && (
           <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-violet-600" />
         )}
-        {placement === 'top' && (
+        {!step.isFancyArrow && placement === 'top' && (
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-white" />
         )}
       </div>
+
+      {/* Secondary Custom Fancy Spotlights for other actions, when on the first Dashboard steps */}
+      {(step.target === '.tour-create-set-card' || step.target === '.tour-create-collection-card') && (
+        <>
+          {/* existing set card ring & fancy arrow */}
+          {existingSetRect && (
+            <>
+              <div
+                className="fixed z-[9996] pointer-events-none"
+                style={{
+                  left: existingSetRect.left - spotPad,
+                  top: existingSetRect.top - spotPad,
+                  width: existingSetRect.right - existingSetRect.left + spotPad * 2,
+                  height: existingSetRect.bottom - existingSetRect.top + spotPad * 2,
+                  borderRadius: 10,
+                  border: '2px dashed rgba(139,92,246,0.3)',
+                  boxShadow: '0 0 6px rgba(139,92,246,0.1)',
+                }}
+              />
+              <div
+                className="fixed z-[9996] pointer-events-none flex flex-col items-center"
+                style={{
+                  left: existingSetRect.left + existingSetRect.width / 2 - 100,
+                  top: existingSetRect.bottom + spotPad + 4,
+                  width: 200,
+                }}
+              >
+                <div className="animate-bounce flex flex-col items-center w-full">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-violet-500/80 drop-shadow-sm">
+                    <path d="M16 20 C 12 16, 11 11, 11 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6 11 L11 5 L16 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="mt-1.5 bg-white/95 border border-violet-100 rounded-xl px-3 py-1.5 shadow-md backdrop-blur-sm text-center w-full">
+                  <p className="text-[11px] font-bold text-slate-800 leading-tight">
+                    Visualizza e personalizza i pezzi 3D di questa scacchiera
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* play 1v1 card ring & fancy arrow */}
+          {play1v1Rect && (
+            <>
+              <div
+                className="fixed z-[9996] pointer-events-none"
+                style={{
+                  left: play1v1Rect.left - spotPad,
+                  top: play1v1Rect.top - spotPad,
+                  width: play1v1Rect.right - play1v1Rect.left + spotPad * 2,
+                  height: play1v1Rect.bottom - play1v1Rect.top + spotPad * 2,
+                  borderRadius: 10,
+                  border: '2px dashed rgba(20,184,166,0.3)',
+                  boxShadow: '0 0 6px rgba(20,184,166,0.1)',
+                }}
+              />
+              <div
+                className="fixed z-[9996] pointer-events-none flex flex-col items-center"
+                style={{
+                  left: play1v1Rect.left + play1v1Rect.width / 2 - 100,
+                  top: play1v1Rect.bottom + spotPad + 4,
+                  width: 200,
+                }}
+              >
+                <div className="animate-bounce flex flex-col items-center w-full">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-teal-500/80 drop-shadow-sm">
+                    <path d="M16 20 C 12 16, 11 11, 11 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6 11 L11 5 L16 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="mt-1.5 bg-white/95 border border-teal-100 rounded-xl px-3 py-1.5 shadow-md backdrop-blur-sm text-center w-full">
+                  <p className="text-[11px] font-bold text-slate-800 leading-tight">
+                    Sfida un amico in locale usando le tue scacchiere
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* import set card ring & fancy arrow */}
+          {importSetRect && (
+            <>
+              <div
+                className="fixed z-[9996] pointer-events-none"
+                style={{
+                  left: importSetRect.left - spotPad,
+                  top: importSetRect.top - spotPad,
+                  width: importSetRect.right - importSetRect.left + spotPad * 2,
+                  height: importSetRect.bottom - importSetRect.top + spotPad * 2,
+                  borderRadius: 10,
+                  border: '2px dashed rgba(99,102,241,0.3)',
+                  boxShadow: '0 0 6px rgba(99,102,241,0.1)',
+                }}
+              />
+              <div
+                className="fixed z-[9996] pointer-events-none flex flex-col items-center"
+                style={{
+                  left: importSetRect.left + importSetRect.width / 2 - 100,
+                  top: importSetRect.bottom + spotPad + 4,
+                  width: 200,
+                }}
+              >
+                <div className="animate-bounce flex flex-col items-center w-full">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-indigo-500/80 drop-shadow-sm">
+                    <path d="M16 20 C 12 16, 11 11, 11 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6 11 L11 5 L16 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="mt-1.5 bg-white/95 border border-indigo-100 rounded-xl px-3 py-1.5 shadow-md backdrop-blur-sm text-center w-full">
+                  <p className="text-[11px] font-bold text-slate-800 leading-tight">
+                    Carica e ripristina un set da un archivio ZIP salvato
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* setsTabRect ring & fancy arrow */}
+          {setsTabRect && (
+            <>
+              <div
+                className="fixed z-[9996] pointer-events-none"
+                style={{
+                  left: setsTabRect.left - spotPad,
+                  top: setsTabRect.top - spotPad,
+                  width: setsTabRect.right - setsTabRect.left + spotPad * 2,
+                  height: setsTabRect.bottom - setsTabRect.top + spotPad * 2,
+                  borderRadius: 10,
+                  border: '2px dashed rgba(139,92,246,0.3)',
+                  boxShadow: '0 0 6px rgba(139,92,246,0.1)',
+                }}
+              />
+              <div
+                className="fixed z-[9996] pointer-events-none flex flex-col items-center justify-end"
+                style={{
+                  left: setsTabRect.left + setsTabRect.width / 2 - 12,
+                  top: setsTabRect.top - spotPad - 94,
+                  width: 24,
+                  height: 90,
+                }}
+              >
+                <div className="absolute bottom-[28px] right-2 w-[160px] bg-white/95 border border-violet-100 rounded-xl px-3 py-1.5 shadow-md backdrop-blur-sm text-center">
+                  <p className="text-[11px] font-bold text-slate-800 leading-tight">
+                    Filtra per vedere l'elenco delle tue Scacchiere
+                  </p>
+                </div>
+                <div className="animate-bounce flex flex-col items-center mt-auto w-full">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-violet-500/80 drop-shadow-sm">
+                    <path d="M11.5 4 C 11.5 8, 12 13, 14 17 M8 13 L14 17 L18 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* collectionsTabRect ring & fancy arrow */}
+          {collectionsTabRect && (
+            <>
+              <div
+                className="fixed z-[9996] pointer-events-none"
+                style={{
+                  left: collectionsTabRect.left - spotPad,
+                  top: collectionsTabRect.top - spotPad,
+                  width: collectionsTabRect.right - collectionsTabRect.left + spotPad * 2,
+                  height: collectionsTabRect.bottom - collectionsTabRect.top + spotPad * 2,
+                  borderRadius: 10,
+                  border: '2px dashed rgba(139,92,246,0.3)',
+                  boxShadow: '0 0 6px rgba(139,92,246,0.1)',
+                }}
+              />
+              <div
+                className="fixed z-[9996] pointer-events-none flex flex-col items-center justify-end"
+                style={{
+                  left: collectionsTabRect.left + collectionsTabRect.width / 2 - 12,
+                  top: collectionsTabRect.top - spotPad - 94,
+                  width: 24,
+                  height: 90,
+                }}
+              >
+                <div className="absolute bottom-[28px] left-2 w-[160px] bg-white/95 border border-violet-100 rounded-xl px-3 py-1.5 shadow-md backdrop-blur-sm text-center">
+                  <p className="text-[11px] font-bold text-slate-800 leading-tight">
+                    Raggruppa e organizza più scacchiere in Collezioni
+                  </p>
+                </div>
+                <div className="animate-bounce flex flex-col items-center mt-auto w-full">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-violet-500/80 drop-shadow-sm">
+                    <path d="M11.5 4 C 11.5 8, 12 13, 14 17 M8 13 L14 17 L18 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+            </>
+          )}
+        </>
+      )}
     </>,
     document.body
   );
@@ -237,11 +535,46 @@ export function InteractiveTour() {
     localStorage.removeItem('chess3d_current_step');
   };
 
+  const getNextValidStepIndex = (steps: TourStep[], startIndex: number): number => {
+    let idx = startIndex;
+    while (idx < steps.length) {
+      const step = steps[idx];
+      if (step.skipIfNotFound && !document.querySelector(step.target)) {
+        idx++;
+      } else {
+        break;
+      }
+    }
+    return idx;
+  };
+
   const startForCurrentPage = (steps: TourStep[], startIdx = 0) => {
     setCurrentSteps(steps);
     setStepIndex(startIdx);
     setActive(true);
   };
+
+  // Auto-skip steps whose target is not found, but only if the page base elements (like .tour-create-set-card) are loaded
+  useEffect(() => {
+    if (!active || !currentSteps.length) return;
+    const step = currentSteps[stepIndex];
+    if (step?.skipIfNotFound) {
+      const baseLoaded = document.querySelector('.tour-create-set-card');
+      if (baseLoaded) {
+        const el = document.querySelector(step.target);
+        if (!el) {
+          // Skip to next step using our skip helper
+          const nextIdx = getNextValidStepIndex(currentSteps, stepIndex + 1);
+          if (nextIdx >= currentSteps.length) {
+            finish();
+          } else {
+            setStepIndex(nextIdx);
+            localStorage.setItem('chess3d_current_step', nextIdx.toString());
+          }
+        }
+      }
+    }
+  }, [active, stepIndex, currentSteps, location.pathname]);
 
   // Auto-start on first visit (following the creation flow)
   useEffect(() => {
@@ -268,7 +601,10 @@ export function InteractiveTour() {
   // Listen for manual trigger from floating button
   useEffect(() => {
     const handleOpen = () => {
-      const steps = getStepsForPath(location.pathname);
+      let steps = getStepsForPath(location.pathname);
+      if (location.pathname === '/' && document.querySelector('.tour-create-collection-card')) {
+        steps = COLLECTIONS_STEPS;
+      }
       if (!steps.length) return;
       localStorage.removeItem('chess3d_interactive_tutorial');
       localStorage.removeItem('chess3d_current_step');
@@ -306,13 +642,68 @@ export function InteractiveTour() {
         return;
       }
 
-      // Step 0: click "Crea Scacchiera" card -> advance to name step
-      if (step.target === '.tour-create-set-card' && el.closest('.tour-create-set-card')) {
-        setTimeout(() => {
-          const nextIdx = stepIndex + 1;
-          setStepIndex(nextIdx);
-          localStorage.setItem('chess3d_current_step', nextIdx.toString());
-        }, 300);
+      // Tab switcher interactions
+      if (el.closest('.tour-tab-collections')) {
+        setCurrentSteps(COLLECTIONS_STEPS);
+        setStepIndex(0);
+        localStorage.setItem('chess3d_current_step', '0');
+        return;
+      }
+
+      if (el.closest('.tour-tab-sets')) {
+        setCurrentSteps(DASHBOARD_STEPS);
+        setStepIndex(0);
+        localStorage.setItem('chess3d_current_step', '0');
+        return;
+      }
+
+      // First step options handling (if on dashboard, at create set card step)
+      if (step.target === '.tour-create-set-card') {
+        const ClickedCard = el.closest('.tour-create-set-card');
+        const ClickedExisting = el.closest('.tour-existing-set-card');
+        const ClickedPlay = el.closest('.tour-play-1v1-card');
+        const ClickedImport = el.closest('.tour-import-set-card');
+
+        if (ClickedCard) {
+          setTimeout(() => {
+            const nextIdx = stepIndex + 1;
+            setStepIndex(nextIdx);
+            localStorage.setItem('chess3d_current_step', nextIdx.toString());
+          }, 300);
+          return;
+        }
+
+        if (ClickedExisting) {
+          // Navigates to existing set page. Prepare the tutorial to start at set detail stage.
+          localStorage.setItem('chess3d_current_step', DASHBOARD_STEPS.length.toString());
+          setActive(false);
+          return;
+        }
+
+        if (ClickedPlay) {
+          // Play local game -> Complete tutorial since it's an end state for onboarding
+          finish();
+          return;
+        }
+
+        if (ClickedImport) {
+          // Import ZIP -> Complete tutorial
+          finish();
+          return;
+        }
+      }
+
+      // First step option handling for collections
+      if (step.target === '.tour-create-collection-card') {
+        const ClickedCard = el.closest('.tour-create-collection-card');
+        if (ClickedCard) {
+          setTimeout(() => {
+            const nextIdx = stepIndex + 1;
+            setStepIndex(nextIdx);
+            localStorage.setItem('chess3d_current_step', nextIdx.toString());
+          }, 300);
+          return;
+        }
       }
 
       // Name step: clicking directly in description field advances to description step
@@ -322,10 +713,22 @@ export function InteractiveTour() {
         localStorage.setItem('chess3d_current_step', nextIdx.toString());
       }
 
+      // Name step for collections: clicking directly in description field advances to description step
+      if (step.target === '.tour-coll-name-input' && el.closest('.tour-coll-desc-input')) {
+        const nextIdx = stepIndex + 1;
+        setStepIndex(nextIdx);
+        localStorage.setItem('chess3d_current_step', nextIdx.toString());
+      }
+
       // Description step: clicking "Crea Set" -> submit + navigate to set detail
       if (step.target === '.tour-set-desc-input' && el.closest('.tour-create-set-submit')) {
         localStorage.setItem('chess3d_current_step', DASHBOARD_STEPS.length.toString());
         setActive(false);
+      }
+
+      // Description step for collections: clicking "Crea Collezione" submit button -> finishes tutorial
+      if (step.target === '.tour-coll-desc-input' && el.closest('.tour-create-coll-submit')) {
+        finish();
       }
 
       // Set detail: click King -> finish tutorial
@@ -353,7 +756,7 @@ export function InteractiveTour() {
         location.pathname.startsWith('/sets/') && stepIndex === SET_DETAIL_STEPS.length - 1
       }
       onNext={() => {
-        const nextIdx = stepIndex + 1;
+        const nextIdx = getNextValidStepIndex(currentSteps, stepIndex + 1);
         if (nextIdx >= currentSteps.length) {
           finish();
         } else {

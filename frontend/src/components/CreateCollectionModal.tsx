@@ -50,17 +50,17 @@ export default function CreateCollectionModal({ isOpen, onClose, onCreated }: Pr
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
         <div className="flex items-center justify-between p-6 border-b">
           <h3 className="text-xl font-semibold text-gray-900">Crea Collezione</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600" disabled={isLoading}><X className="w-6 h-6"/></button>
+          <button onClick={onClose} className="tour-modal-cancel text-gray-400 hover:text-gray-600" disabled={isLoading}><X className="w-6 h-6"/></button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-            <input value={name} onChange={e => setName(e.target.value)} required className="w-full px-3 py-2 border rounded" />
+            <input value={name} onChange={e => setName(e.target.value)} required className="tour-coll-name-input w-full px-3 py-2 border rounded" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full px-3 py-2 border rounded" />
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="tour-coll-desc-input w-full px-3 py-2 border rounded" />
           </div>
 
           <div>
@@ -77,8 +77,8 @@ export default function CreateCollectionModal({ isOpen, onClose, onCreated }: Pr
           </div>
 
           <div className="flex gap-3 pt-4">
-            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border rounded" disabled={isLoading}>Annulla</button>
-            <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded" disabled={isLoading || !name.trim()}>{isLoading ? 'Creando...' : 'Crea Collezione'}</button>
+            <button type="button" onClick={onClose} className="tour-modal-cancel flex-1 px-4 py-2 border rounded" disabled={isLoading}>Annulla</button>
+            <button type="submit" className="tour-create-coll-submit flex-1 px-4 py-2 bg-blue-600 text-white rounded" disabled={isLoading || !name.trim()}>{isLoading ? 'Creando...' : 'Crea Collezione'}</button>
           </div>
         </form>
       </div>
